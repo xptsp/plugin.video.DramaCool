@@ -1,2 +1,11 @@
-1.0
+v2.0
+- Initial forked release
+- Fixed inconsistent indentation issues throughout the addon
+- Changed addon icon
+- Added error message if no video URL is passed to playVideo function
+- Added exception code to "vidlink = source.resolve()" line to remove Kodi error messages during execution
+- Trimmed unnecessary spaces from the "default.py" file
+- Updated "addon.xml" with description from google listing of website
+
+v1.0
 - Intial release
