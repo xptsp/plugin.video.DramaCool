@@ -1,3 +1,12 @@
+v2.0.1
+- Changed "Search" item to "Search Dramas" item in main menu.
+- Created "Dramas by Country" submenu from "GetMenu" function call made in "HOME" function.
+- Added "Dramas by Genre" submenu to main menu.
+- Created "Movies by Country" submenu from "GetMenu" function call made in "HOME" function.
+- Added "Movies by Genre" submenu to main menu
+- Added "Search Movies" item to main menu.
+- Added "Search KShows" item to main menu.
+
 v2.0
 - Initial forked release
 - Fixed inconsistent indentation issues throughout the addon

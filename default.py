@@ -29,16 +29,22 @@ strdomain ='https://www2.dramacool.video'
 strdomain2 ='https://www.dramacool9.co'
 
 def HOME():
-	addDir('Search',strdomain+'/search?type=movies&keyword=',4,'')
 	addDir('List A-Z',strdomain+"/drama-list/char-start-#.html",3,'')
-	addDir('Latest Drama',strdomain+'/recently-added',6,'')
-	addDir('Latest Movie',strdomain+'/recently-added-movie',6,'')
-	addDir('Latest KShow',strdomain+'/recently-added-kshow',6,'')
-	GetMenu(strdomain2,strdomain2+"/category/drama/")
-	GetMenu(strdomain2,strdomain2+"/category/movies/")
+	addDir('Latest Dramas',strdomain+'/recently-added',6,'')
+	addDir('Search Dramas',strdomain+'/search?type=drama&keyword=',4,'')
+	addDir('Dramas by Country', strdomain2+"/category/drama/", 12, '')
+	addDir('Dramas by Genre','',13,'')
+	addDir('Latest Movies',strdomain+'/recently-added-movie',6,'')
+	addDir('Search Movies',strdomain+'/search?type=movies&keyword=',4,'')
+	addDir('Movies by Country', strdomain2+"/category/movies/", 12, '')
+	addDir('Latest KShows',strdomain+'/recently-added-kshow',6,'')
+	addDir('Search KShows',strdomain+'/search?type=kshow&keyword=',4,'')
+
 
 def GetMenu(url,menutype):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
@@ -53,12 +59,19 @@ def GetMenu(url,menutype):
 				vname=str(item.a.contents[0]).strip()
 				addDir(vname,link,9,"")
 
-def IndexLatest(url):
-	link = GetContent(url)
+
+def IndexLatest(url,notify=True):
+	link = GetContent(url,notify)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
-	newlink = ''.join(link.splitlines()).replace('\t','')
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "switch-block list-episode-item"})
 	if(len(menucontent) >0):
@@ -80,10 +93,16 @@ def IndexLatest(url):
 
 def Index_co(url):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
-	newlink = ''.join(link.splitlines()).replace('\t','')
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('main', {"id" : "main"})
 	if(len(menucontent) >0):
@@ -103,8 +122,10 @@ def Index_co(url):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,9,"")
 
 
-def ListSource(url):
+def ListSource(url,series):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
@@ -120,8 +141,11 @@ def ListSource(url):
 			if(vname!="Standard Server" and vname!="Kvid"):
 				addLink(vname,vurl,8,"")
 
-def ListSource_co(url):
+
+def ListSource_co(url,series):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
@@ -136,12 +160,16 @@ def ListSource_co(url):
 			if(vname!="Standard Server" and vname!="Kvid"):
 				addLink(vname,vurl,8,"")
 
+
 def ListAZ(url,mode):
 		for character in AZ_DIRECTORIES:
 			chrUrl= url.replace('#',character)
 			addDir(character,chrUrl,mode,"")
+
+
 def log(description, level=0):
 	print description
+
 
 def fetchPage(params={}):
 	get = params.get
@@ -223,6 +251,7 @@ def fetchPage(params={}):
 		ret_obj = fetchPage(params)
 		return ret_obj
 
+
 def getVimeoUrl(videoid,currentdomain=""):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -236,6 +265,7 @@ def getVimeoUrl(videoid,currentdomain=""):
 		except:
 			  return getVimeoVideourl(videoid,currentdomain)
 
+
 def scrapeVideoInfo(videoid,currentdomain):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -246,6 +276,7 @@ def scrapeVideoInfo(videoid,currentdomain):
 		html = html.replace("{config:{", '{"config":{') + "}"
 		collection = json.loads(html)
 	return collection
+
 
 def getVideoInfo(videoid,currentdomain):
 	collection = scrapeVideoInfo(videoid)
@@ -278,6 +309,7 @@ def getVideoInfo(videoid,currentdomain):
 	log("Done")
 	return (video, 200)
 
+
 def getVimeoVideourl(videoid,currentdomain):
 	(video, status) = getVideoInfo(videoid,currentdomain)
 
@@ -301,6 +333,7 @@ def getVimeoVideourl(videoid,currentdomain):
 		log("Got apierror: " + video['apierror'])
 		return ""
 
+
 def SEARCH():
 	try:
 		keyb = xbmc.Keyboard('', 'Enter search text')
@@ -311,6 +344,7 @@ def SEARCH():
 		url = strdomain+'/search?type=movies&keyword='+searchText
 		IndexLatest(url)
 	except: pass
+
 
 def INDEX(url):
 	link = GetContent(url)
@@ -355,8 +389,11 @@ def is_number(s):
 	except ValueError:
 		return False
 
+
 def SearchResults(url):
 	link = GetContent(url)
+	if link == None:
+		return
 	newlink = ''.join(link.splitlines()).replace('\t','')
 	match=re.compile('<h2 class="title"><a href="(.+?)" rel="bookmark" title="">(.+?)</a></h2>').findall(newlink)
 	if(len(match) >= 1):
@@ -367,12 +404,20 @@ def SearchResults(url):
 		nexurl= match[0]
 		addDir('Next>',nexurl,6,'')
 
+
 def Episodes(url,name):
 	link = GetContent(url)
+	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
-	newlink = ''.join(link.splitlines()).replace('\t','')
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "list-episode-item-2 all-episode"})
 	if(len(menucontent) >0):
@@ -385,10 +430,16 @@ def Episodes(url,name):
 
 def Episodes_co(url,name):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
-	newlink = ''.join(link.splitlines()).replace('\t','')
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('div', {"id" : "all-episodes"})
 	if(len(menucontent) >0):
@@ -414,12 +465,13 @@ def ParseSeparate(vcontent,namesearch,urlsearch):
 			return True
 	return False
 
+
 def GetContent2(url,referr, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-	opener.addheaders = [(
-		'Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+	opener.addheaders = [
+		('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
 		('Accept-Encoding', 'gzip, deflate'),
 		('Referer', referr),
 		('Content-Type', 'application/x-www-form-urlencoded'),
@@ -437,27 +489,31 @@ def GetContent2(url,referr, cj):
 	usock.close()
 	return (cj, response)
 
-def GetContent(url):
+
+def GetContent(url,notify=True):
 	try:
-	   net = Net()
-	   second_response = net.http_GET(url)
-	   return second_response.content
+		net = Net()
+		second_response = net.http_GET(url)
+		return second_response.content
 	except:
-	   print url
-	   d = xbmcgui.Dialog()
-	   d.ok(url,"Can't Connect to site",'Try again in a moment')
+		print url
+		if notify == True:
+			d = xbmcgui.Dialog()
+			d.ok(url,"Can't Connect to site",'Try again in a moment')
+
 
 def postContent(url,data,referr):
 	opener = urllib2.build_opener()
-	opener.addheaders = [('Accept','text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
-						 ('Accept-Encoding','gzip, deflate'),
-						 ('Referer', referr),
-						 ('Content-Type', 'application/x-www-form-urlencoded'),
-						 ('User-Agent', 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0'),
-						 ('Connection','keep-alive'),
-						 ('Accept-Language','en-us,en;q=0.5'),
-						 ('Pragma','no-cache'),
-						 ('Host','www.phim.li')]
+	opener.addheaders = [
+		('Accept','text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+		('Accept-Encoding','gzip, deflate'),
+		('Referer', referr),
+		('Content-Type', 'application/x-www-form-urlencoded'),
+		('User-Agent', 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0'),
+		('Connection','keep-alive'),
+		('Accept-Language','en-us,en;q=0.5'),
+		('Pragma','no-cache'),
+		('Host','www.phim.li')]
 	usock=opener.open(url,data)
 	if usock.info().get('Content-Encoding') == 'gzip':
 		buf = StringIO.StringIO(usock.read())
@@ -497,6 +553,7 @@ def playVideo(videoType,videoId):
 		xbmcPlayer = xbmc.Player()
 		xbmcPlayer.play(videoId)
 
+
 def GetDirVideoUrl(url, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
@@ -524,6 +581,7 @@ def GetDirVideoUrl(url, cj):
 	# urllib2.install_opener(opener)
 	usock = opener.open(url)
 	return redirhndler.video_url
+
 
 def loadVideos(url,name):
    newlink=url
@@ -620,10 +678,12 @@ def loadVideos(url,name):
 
    playVideo(playtype,vidlink)
 
+
 def OtherContent():
 	net = Net()
 	response = net.http_GET('http://khmerportal.com/videos')
 	print response
+
 
 def extractFlashVars(data):
 	for line in data.split("\n"):
@@ -642,6 +702,7 @@ def extractFlashVars(data):
 		data = json.loads(data)
 		flashvars = data["args"]
 	return flashvars
+
 
 def selectVideoQuality(links):
 	link = links.get
@@ -730,6 +791,7 @@ def selectVideoQuality(links):
 
 
 	return video_url
+
 
 def getYoutube(videoid):
 	code = videoid
@@ -937,6 +999,7 @@ def APP_LAUNCH():
 
 checkGA()
 
+
 def addLink(name,url,mode,iconimage):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
 	ok=True
@@ -946,6 +1009,7 @@ def addLink(name,url,mode,iconimage):
 	liz.addContextMenuItems(contextMenuItems, replaceItems=True)
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz)
 	return ok
+
 
 def addNext(formvar,url,mode,iconimage):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&formvar="+str(formvar)+"&name="+urllib.quote_plus('Next >')
@@ -963,6 +1027,7 @@ def addDir(name,url,mode,iconimage,selected=False):
 	liz.setInfo( type="Video", infoLabels={ "Title": name } )
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
+
 
 def get_params():
 	param=[]
@@ -982,6 +1047,27 @@ def get_params():
 	return param
 
 
+def List_Genres(url):
+	link = GetContent(url)
+	if link == None:
+		return
+	try:
+		link =link.encode("UTF-8")
+	except: pass
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
+	soup = BeautifulSoup(newlink)
+	menucontent=soup.findAll('ul', {"class" : "switch-block list-episode-item-2"})
+	if(len(menucontent) >0):
+		for item in menucontent[0].findAll('li'):
+			#print item
+			vname=item.h3.contents[0]
+			vurl=strdomain+item.a["href"]
+			addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
+
 
 params=get_params()
 url=None
@@ -990,47 +1076,46 @@ mode=None
 formvar=None
 series=None
 try:
-		url=urllib.unquote_plus(params["url"])
+	url=urllib.unquote_plus(params["url"])
 except:
-		pass
+	pass
 try:
-		series=urllib.unquote_plus(params["series"])
+	series=urllib.unquote_plus(params["series"])
 except:
-		pass
+	pass
 try:
-		name=urllib.unquote_plus(params["name"])
+	name=urllib.unquote_plus(params["name"])
 except:
-		pass
+	pass
 try:
-		mode=int(params["mode"])
+	mode=int(params["mode"])
 except:
-		pass
+	pass
 try:
-		formvar=int(params["formvar"])
+	formvar=int(params["formvar"])
 except:
-		pass
+	pass
 
 #url='http://www.khmeraccess.com/video/viewvideo/6604/31end.html'
 sysarg=str(sys.argv[1])
 if mode==None or url==None or len(url)<1:
-		#OtherContent()
-		HOME()
-
+	#OtherContent()
+	HOME()
 elif mode==2:
-		#d = xbmcgui.Dialog()
-		#d.ok('mode 2',str(url),' ingore errors lol')
-		GA("INDEX",name)
-		INDEX(url)
+	#d = xbmcgui.Dialog()
+	#d.ok('mode 2',str(url),' ingore errors lol')
+	GA("INDEX",name)
+	INDEX(url)
 elif mode==3:
-		#sysarg="-1"
-		ListAZ(strdomain+"/drama-list/char-start-#.html",2)
+	#sysarg="-1"
+	ListAZ(strdomain+"/drama-list/char-start-#.html",2)
 elif mode==4:
-		SEARCH()
+	SEARCH()
 elif mode==5:
-	   GA("episode",name)
-	   Episodes(url,name)
+	GA("episode",name)
+	Episodes(url,name)
 elif mode==6:
-	   IndexLatest(url)
+	IndexLatest(url)
 elif mode==7:
 	ListSource(url,series)
 elif mode==8:
@@ -1041,4 +1126,10 @@ elif mode==10:
 	Episodes_co(url,name)
 elif mode==11:
 	ListSource_co(url,series)
+elif mode==12:
+	GetMenu(url,url)
+elif mode==13:
+	List_Genres(strdomain+"/list-genres.html")
+elif mode==14:
+	IndexLatest(url,False)
 xbmcplugin.endOfDirectory(int(sysarg))
