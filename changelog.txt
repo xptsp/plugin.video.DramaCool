@@ -1,3 +1,15 @@
+v2.0.2
+- More indentation fixes throughout the addon
+- Added seperator lines between function definitions.
+- Changed "Search Movies" item back to "Search".
+- Removed "Search Dramas", as website cannot differenate between them.
+- Removed "Search KShows", as website cannot differenate between them.
+- Removed "Movies by Genre", as website does not differerate between Movies and Dramas.
+- Added "Most Popular Dramas" submenu to main menu.
+- Added "Popular Stars" submenu to main menu.
+- Added "Search Stars" submenu to main menu.
+- Added "[RAW]" prefix before episodes that are not subbed.
+
 v2.0.1
 - Changed "Search" item to "Search Dramas" item in main menu.
 - Created "Dramas by Country" submenu from "GetMenu" function call made in "HOME" function.

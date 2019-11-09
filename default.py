@@ -13,8 +13,8 @@ from BeautifulSoup import BeautifulSoup
 from BeautifulSoup import BeautifulStoneSoup
 from BeautifulSoup import SoupStrainer
 import urlresolver
-
 import time
+
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
 AZ_DIRECTORIES = ['0','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y', 'Z']
 if ADDON.getSetting('ga_visitor')=='':
@@ -23,24 +23,26 @@ if ADDON.getSetting('ga_visitor')=='':
 
 PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
-VERSION = "2.0" #<---- PLUGIN VERSION
+VERSION = "2.0.2" #<---- PLUGIN VERSION
 
 strdomain ='https://www2.dramacool.video'
 strdomain2 ='https://www.dramacool9.co'
 
+##############################################
 def HOME():
 	addDir('List A-Z',strdomain+"/drama-list/char-start-#.html",3,'')
 	addDir('Latest Dramas',strdomain+'/recently-added',6,'')
-	addDir('Search Dramas',strdomain+'/search?type=drama&keyword=',4,'')
+	addDir('Most Popular Dramas',strdomain+'/most-popular-drama',6,'')
 	addDir('Dramas by Country', strdomain2+"/category/drama/", 12, '')
-	addDir('Dramas by Genre','',13,'')
+	addDir('Dramas by Genre',strdomain+'/list-genres.html',13,'')
 	addDir('Latest Movies',strdomain+'/recently-added-movie',6,'')
-	addDir('Search Movies',strdomain+'/search?type=movies&keyword=',4,'')
 	addDir('Movies by Country', strdomain2+"/category/movies/", 12, '')
 	addDir('Latest KShows',strdomain+'/recently-added-kshow',6,'')
-	addDir('Search KShows',strdomain+'/search?type=kshow&keyword=',4,'')
+	addDir('Search DramaCool',strdomain+'/search?type=movies&keyword=',4,'')
+	addDir('Popular Stars',strdomain+'/list-star.html',15,'')
+	addDir('Search Stars',strdomain+'/list-star.html',17,'')
 
-
+##############################################
 def GetMenu(url,menutype):
 	link = GetContent(url)
 	if link == None:
@@ -59,7 +61,7 @@ def GetMenu(url,menutype):
 				vname=str(item.a.contents[0]).strip()
 				addDir(vname,link,9,"")
 
-
+##############################################
 def IndexLatest(url,notify=True):
 	link = GetContent(url,notify)
 	if link == None:
@@ -90,7 +92,7 @@ def IndexLatest(url,notify=True):
 			if(item.has_key("class")==False):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,6,"")
 
-
+##############################################
 def Index_co(url):
 	link = GetContent(url)
 	if link == None:
@@ -121,7 +123,7 @@ def Index_co(url):
 					vurl=strdomain2+item["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,9,"")
 
-
+##############################################
 def ListSource(url,series):
 	link = GetContent(url)
 	if link == None:
@@ -141,7 +143,7 @@ def ListSource(url,series):
 			if(vname!="Standard Server" and vname!="Kvid"):
 				addLink(vname,vurl,8,"")
 
-
+##############################################
 def ListSource_co(url,series):
 	link = GetContent(url)
 	if link == None:
@@ -160,17 +162,17 @@ def ListSource_co(url,series):
 			if(vname!="Standard Server" and vname!="Kvid"):
 				addLink(vname,vurl,8,"")
 
-
+##############################################
 def ListAZ(url,mode):
-		for character in AZ_DIRECTORIES:
-			chrUrl= url.replace('#',character)
-			addDir(character,chrUrl,mode,"")
+	for character in AZ_DIRECTORIES:
+		chrUrl= url.replace('#',character)
+		addDir(character,chrUrl,mode,"")
 
-
+##############################################
 def log(description, level=0):
 	print description
 
-
+##############################################
 def fetchPage(params={}):
 	get = params.get
 	link = get("link")
@@ -251,7 +253,7 @@ def fetchPage(params={}):
 		ret_obj = fetchPage(params)
 		return ret_obj
 
-
+##############################################
 def getVimeoUrl(videoid,currentdomain=""):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -265,7 +267,7 @@ def getVimeoUrl(videoid,currentdomain=""):
 		except:
 			  return getVimeoVideourl(videoid,currentdomain)
 
-
+##############################################
 def scrapeVideoInfo(videoid,currentdomain):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -277,7 +279,7 @@ def scrapeVideoInfo(videoid,currentdomain):
 		collection = json.loads(html)
 	return collection
 
-
+##############################################
 def getVideoInfo(videoid,currentdomain):
 	collection = scrapeVideoInfo(videoid)
 
@@ -309,7 +311,7 @@ def getVideoInfo(videoid,currentdomain):
 	log("Done")
 	return (video, 200)
 
-
+##############################################
 def getVimeoVideourl(videoid,currentdomain):
 	(video, status) = getVideoInfo(videoid,currentdomain)
 
@@ -333,7 +335,7 @@ def getVimeoVideourl(videoid,currentdomain):
 		log("Got apierror: " + video['apierror'])
 		return ""
 
-
+##############################################
 def SEARCH():
 	try:
 		keyb = xbmc.Keyboard('', 'Enter search text')
@@ -345,7 +347,7 @@ def SEARCH():
 		IndexLatest(url)
 	except: pass
 
-
+##############################################
 def INDEX(url):
 	link = GetContent(url)
 	try:
@@ -380,8 +382,7 @@ def INDEX(url):
 	# if(nexurl!=""):
 		  # addDir("Next >>",nexurl,2,"")
 
-
-
+##############################################
 def is_number(s):
 	try:
 		float(s)
@@ -389,7 +390,7 @@ def is_number(s):
 	except ValueError:
 		return False
 
-
+##############################################
 def SearchResults(url):
 	link = GetContent(url)
 	if link == None:
@@ -404,9 +405,8 @@ def SearchResults(url):
 		nexurl= match[0]
 		addDir('Next>',nexurl,6,'')
 
-
+##############################################
 def Episodes(url,name):
-	link = GetContent(url)
 	link = GetContent(url)
 	if link == None:
 		return
@@ -425,9 +425,14 @@ def Episodes(url,name):
 			#print item
 			vname=item.h3.contents[0]
 			vurl=strdomain+item.a["href"]
+			vsubbed=item.findAll('span', {"class": "type SUB"})
+			if vsubbed != None:
+				vsubbed = vsubbed[0].string
+				if vsubbed != 'SUB':
+					vname = '[RAW] '+vname
 			addDir(vname.encode('utf-8', 'ignore'),vurl,7,"")
 
-
+##############################################
 def Episodes_co(url,name):
 	link = GetContent(url)
 	if link == None:
@@ -447,9 +452,14 @@ def Episodes_co(url,name):
 			#print item
 			vname=item.h3.a["title"]
 			vurl=item.h3.a["href"]
+			vsubbed=item.findAll('span', {"class": "type SUB"})
+			if vsubbed != None:
+				vsubbed = vsubbed[0].string
+				if vsubbed != 'SUB':
+					vname = '[RAW] '+vname
 			addDir(vname.encode('utf-8', 'ignore'),vurl,11,"")
 
-
+##############################################
 def ParseSeparate(vcontent,namesearch,urlsearch):
 	newlink = ''.join(vcontent.splitlines()).replace('\t','')
 	match2=re.compile(urlsearch).findall(newlink)
@@ -465,7 +475,7 @@ def ParseSeparate(vcontent,namesearch,urlsearch):
 			return True
 	return False
 
-
+##############################################
 def GetContent2(url,referr, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
@@ -489,7 +499,7 @@ def GetContent2(url,referr, cj):
 	usock.close()
 	return (cj, response)
 
-
+##############################################
 def GetContent(url,notify=True):
 	try:
 		net = Net()
@@ -501,7 +511,7 @@ def GetContent(url,notify=True):
 			d = xbmcgui.Dialog()
 			d.ok(url,"Can't Connect to site",'Try again in a moment')
 
-
+##############################################
 def postContent(url,data,referr):
 	opener = urllib2.build_opener()
 	opener.addheaders = [
@@ -524,7 +534,7 @@ def postContent(url,data,referr):
 	usock.close()
 	return response
 
-
+##############################################
 def playVideo(videoType,videoId):
 	url = ""
 	print videoType + '=' + videoId
@@ -537,12 +547,12 @@ def playVideo(videoType,videoId):
 		d.ok("DramaCool", "HTML parsing error encountered!", "Unable to determine video URL to play video!", "Please try another source!")
 	elif (videoType == "youtube"):
 		try:
-				url = getYoutube(videoId)
-				xbmcPlayer = xbmc.Player()
-				xbmcPlayer.play(url)
+			url = getYoutube(videoId)
+			xbmcPlayer = xbmc.Player()
+			xbmcPlayer.play(url)
 		except:
-				url = 'plugin://plugin.video.youtube?path=/root/video&action=play_video&videoid=' + videoId.replace('?','')
-				xbmc.executebuiltin("xbmc.PlayMedia("+url+")")
+			url = 'plugin://plugin.video.youtube?path=/root/video&action=play_video&videoid=' + videoId.replace('?','')
+			xbmc.executebuiltin("xbmc.PlayMedia("+url+")")
 	elif (videoType == "vimeo"):
 		url = getVimeoUrl(videoId,strdomain)
 		xbmcPlayer = xbmc.Player()
@@ -553,7 +563,7 @@ def playVideo(videoType,videoId):
 		xbmcPlayer = xbmc.Player()
 		xbmcPlayer.play(videoId)
 
-
+##############################################
 def GetDirVideoUrl(url, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
@@ -582,7 +592,7 @@ def GetDirVideoUrl(url, cj):
 	usock = opener.open(url)
 	return redirhndler.video_url
 
-
+##############################################
 def loadVideos(url,name):
    newlink=url
    xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
@@ -627,20 +637,20 @@ def loadVideos(url,name):
 				 url = (formatContentInfo[1]).decode('unicode-escape')
 
 		else:
-				cj = cookielib.LWPCookieJar()
-				newlink1="https://docs.google.com/uc?export=download&id="+docid
-				(cj,vidcontent) = GetContent2(newlink1,newlink, cj)
-				soup = BeautifulSoup(vidcontent)
-				downloadlink=soup.findAll('a', {"id" : "uc-download-link"})[0]
-				newlink2 ="https://docs.google.com" + downloadlink["href"]
-				url=GetDirVideoUrl(newlink2,cj)
+			cj = cookielib.LWPCookieJar()
+			newlink1="https://docs.google.com/uc?export=download&id="+docid
+			(cj,vidcontent) = GetContent2(newlink1,newlink, cj)
+			soup = BeautifulSoup(vidcontent)
+			downloadlink=soup.findAll('a', {"id" : "uc-download-link"})[0]
+			newlink2 ="https://docs.google.com" + downloadlink["href"]
+			url=GetDirVideoUrl(newlink2,cj)
 		for cookie in cj:
 			cookiestr += '%s=%s;' % (cookie.name, cookie.value)
 		vidlink=url+ ('|Cookie=%s' % cookiestr)
    elif (newlink.find("vimeo") > -1):
 		idmatch =re.compile("http://player.vimeo.com/video/([^\?&\"\'>]+)").findall(newlink)
 		if(len(idmatch) > 0):
-				playVideo('vimeo',idmatch[0])
+			playVideo('vimeo',idmatch[0])
    elif (newlink.find("youtube") > -1) and (newlink.find("playlists") > -1):
 		playlistid=re.compile('playlists/(.+?)\?v').findall(newlink)
 		vidlink="plugin://plugin.video.youtube?path=/root/video&action=play_all&playlist="+playlistid[0]
@@ -678,13 +688,13 @@ def loadVideos(url,name):
 
    playVideo(playtype,vidlink)
 
-
+##############################################
 def OtherContent():
 	net = Net()
 	response = net.http_GET('http://khmerportal.com/videos')
 	print response
 
-
+##############################################
 def extractFlashVars(data):
 	for line in data.split("\n"):
 		index = line.find("ytplayer.config =")
@@ -703,35 +713,35 @@ def extractFlashVars(data):
 		flashvars = data["args"]
 	return flashvars
 
-
+##############################################
 def selectVideoQuality(links):
 	link = links.get
 	video_url = ""
 	fmt_value = {
-			5: "240p h263 flv container",
-			18: "360p h264 mp4 container | 270 for rtmpe?",
-			22: "720p h264 mp4 container",
-			26: "???",
-			33: "???",
-			34: "360p h264 flv container",
-			35: "480p h264 flv container",
-			37: "1080p h264 mp4 container",
-			38: "720p vp8 webm container",
-			43: "360p h264 flv container",
-			44: "480p vp8 webm container",
-			45: "720p vp8 webm container",
-			46: "520p vp8 webm stereo",
-			59: "480 for rtmpe",
-			78: "seems to be around 400 for rtmpe",
-			82: "360p h264 stereo",
-			83: "240p h264 stereo",
-			84: "720p h264 stereo",
-			85: "520p h264 stereo",
-			100: "360p vp8 webm stereo",
-			101: "480p vp8 webm stereo",
-			102: "720p vp8 webm stereo",
-			120: "hd720",
-			121: "hd1080"
+		5: "240p h263 flv container",
+		18: "360p h264 mp4 container | 270 for rtmpe?",
+		22: "720p h264 mp4 container",
+		26: "???",
+		33: "???",
+		34: "360p h264 flv container",
+		35: "480p h264 flv container",
+		37: "1080p h264 mp4 container",
+		38: "720p vp8 webm container",
+		43: "360p h264 flv container",
+		44: "480p vp8 webm container",
+		45: "720p vp8 webm container",
+		46: "520p vp8 webm stereo",
+		59: "480 for rtmpe",
+		78: "seems to be around 400 for rtmpe",
+		82: "360p h264 stereo",
+		83: "240p h264 stereo",
+		84: "720p h264 stereo",
+		85: "520p h264 stereo",
+		100: "360p vp8 webm stereo",
+		101: "480p vp8 webm stereo",
+		102: "720p vp8 webm stereo",
+		120: "hd720",
+		121: "hd1080"
 	}
 	hd_quality = 1
 
@@ -776,23 +786,23 @@ def selectVideoQuality(links):
 	for fmt_key in links.iterkeys():
 
 		if link(int(fmt_key)):
-				text = repr(fmt_key) + " - "
-				if fmt_key in fmt_value:
-					text += fmt_value[fmt_key]
-				else:
-					text += "Unknown"
+			text = repr(fmt_key) + " - "
+			if fmt_key in fmt_value:
+				text += fmt_value[fmt_key]
+			else:
+				text += "Unknown"
 
-				if (link(int(fmt_key)) == video_url):
-					text += "*"
+			if (link(int(fmt_key)) == video_url):
+				text += "*"
 		else:
-				print "- Missing fmt_value: " + repr(fmt_key)
+			print "- Missing fmt_value: " + repr(fmt_key)
 
 	video_url += " | " + 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 
 
 	return video_url
 
-
+##############################################
 def getYoutube(videoid):
 	code = videoid
 	linkImage = 'http://i.ytimg.com/vi/'+code+'/default.jpg'
@@ -803,42 +813,43 @@ def getYoutube(videoid):
 	response.close()
 
 	if len(re.compile('shortlink" href="http://youtu.be/(.+?)"').findall(link)) == 0:
-			if len(re.compile('\'VIDEO_ID\': "(.+?)"').findall(link)) == 0:
-					req = urllib2.Request('http://www.youtube.com/get_video_info?video_id='+code+'&asv=3&el=detailpage&hl=en_US')
-					req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
-					response = urllib2.urlopen(req)
-					link=response.read()
-					response.close()
+		if len(re.compile('\'VIDEO_ID\': "(.+?)"').findall(link)) == 0:
+			req = urllib2.Request('http://www.youtube.com/get_video_info?video_id='+code+'&asv=3&el=detailpage&hl=en_US')
+			req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
+			response = urllib2.urlopen(req)
+			link=response.read()
+			response.close()
 
 	flashvars = extractFlashVars(link)
 
 	links = {}
 
 	for url_desc in flashvars[u"url_encoded_fmt_stream_map"].split(u","):
-			url_desc_map = cgi.parse_qs(url_desc)
-			if not (url_desc_map.has_key(u"url") or url_desc_map.has_key(u"stream")):
-					continue
+		url_desc_map = cgi.parse_qs(url_desc)
+		if not (url_desc_map.has_key(u"url") or url_desc_map.has_key(u"stream")):
+			continue
 
-			key = int(url_desc_map[u"itag"][0])
-			url = u""
-			if url_desc_map.has_key(u"url"):
-					url = urllib.unquote(url_desc_map[u"url"][0])
-			elif url_desc_map.has_key(u"stream"):
-					url = urllib.unquote(url_desc_map[u"stream"][0])
+		key = int(url_desc_map[u"itag"][0])
+		url = u""
+		if url_desc_map.has_key(u"url"):
+			url = urllib.unquote(url_desc_map[u"url"][0])
+		elif url_desc_map.has_key(u"stream"):
+			url = urllib.unquote(url_desc_map[u"stream"][0])
 
-			if url_desc_map.has_key(u"sig"):
-					url = url + u"&signature=" + url_desc_map[u"sig"][0]
-			links[key] = url
+		if url_desc_map.has_key(u"sig"):
+			url = url + u"&signature=" + url_desc_map[u"sig"][0]
+		links[key] = url
 	highResoVid=selectVideoQuality(links)
 	return highResoVid
 
+##############################################
 def parseDate(dateString):
 	try:
 		return datetime.datetime.fromtimestamp(time.mktime(time.strptime(dateString.encode('utf-8', 'replace'), "%Y-%m-%d %H:%M:%S")))
 	except:
 		return datetime.datetime.today() - datetime.timedelta(days = 1) #force update
 
-
+##############################################
 def checkGA():
 	secsInHour = 60 * 60
 	threshold  = 2 * secsInHour
@@ -869,8 +880,8 @@ def send_request_to_google_analytics(utm_url):
 		print ("GA fail: %s" % utm_url)
 	return response
 
+##############################################
 def GA(group,name):
-	return
 	try:
 		try:
 			from hashlib import md5
@@ -926,7 +937,7 @@ def GA(group,name):
 	except:
 		print "================  CANNOT POST TO ANALYTICS  ================"
 
-
+##############################################
 def APP_LAUNCH():
 	versionNumber = int(xbmc.getInfoLabel("System.BuildVersion" )[0:2])
 	if versionNumber > 13:
@@ -984,13 +995,13 @@ def APP_LAUNCH():
 		print PLATFORM
 		utm_gif_location = "http://www.google-analytics.com/__utm.gif"
 		utm_track = utm_gif_location + "?" + \
-				"utmwv=" + VERSION + \
-				"&utmn=" + str(randint(0, 0x7fffffff)) + \
-				"&utmt=" + "event" + \
-				"&utme="+ quote("5(APP LAUNCH*"+build+"*"+PLATFORM+")")+\
-				"&utmp=" + quote(PATH) + \
-				"&utmac=" + UATRACK + \
-				"&utmcc=__utma=%s" % ".".join(["1", VISITOR, VISITOR, VISITOR,VISITOR,"2"])
+			"utmwv=" + VERSION + \
+			"&utmn=" + str(randint(0, 0x7fffffff)) + \
+			"&utmt=" + "event" + \
+			"&utme="+ quote("5(APP LAUNCH*"+build+"*"+PLATFORM+")")+\
+			"&utmp=" + quote(PATH) + \
+			"&utmac=" + UATRACK + \
+			"&utmcc=__utma=%s" % ".".join(["1", VISITOR, VISITOR, VISITOR,VISITOR,"2"])
 		try:
 			print "============================ POSTING APP LAUNCH TRACK EVENT ============================"
 			send_request_to_google_analytics(utm_track)
@@ -999,7 +1010,7 @@ def APP_LAUNCH():
 
 checkGA()
 
-
+##############################################
 def addLink(name,url,mode,iconimage):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
 	ok=True
@@ -1010,7 +1021,7 @@ def addLink(name,url,mode,iconimage):
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz)
 	return ok
 
-
+##############################################
 def addNext(formvar,url,mode,iconimage):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&formvar="+str(formvar)+"&name="+urllib.quote_plus('Next >')
 	ok=True
@@ -1019,6 +1030,7 @@ def addNext(formvar,url,mode,iconimage):
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
 
+##############################################
 def addDir(name,url,mode,iconimage,selected=False):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
 	ok=True
@@ -1028,7 +1040,7 @@ def addDir(name,url,mode,iconimage,selected=False):
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
 
-
+##############################################
 def get_params():
 	param=[]
 	paramstring=sys.argv[2]
@@ -1046,7 +1058,7 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]
 	return param
 
-
+##############################################
 def List_Genres(url):
 	link = GetContent(url)
 	if link == None:
@@ -1064,10 +1076,92 @@ def List_Genres(url):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.h3.contents[0]
-			vurl=strdomain+item.a["href"]
-			addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
+			try:
+				vname=item.h3.contents[0]
+				vurl=strdomain+item.a["href"]
+				addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
+			except:
+				pass
 
+##############################################
+def List_Stars(url):
+	link = GetContent(url)
+	if link == None:
+		return
+	try:
+		link =link.encode("UTF-8")
+	except: pass
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
+	soup = BeautifulSoup(newlink)
+	menucontent=soup.findAll('ul', {"class" : "list-star"})
+	if(len(menucontent) >0):
+		for item in menucontent[0].findAll('li'):
+			#print item
+			try:
+				vname=item.h3.text
+				vname=vname.encode('utf-8', 'ignore')
+				vurl=strdomain+item.a["href"]
+				vimg=item.a.img["data-original"]
+				#addDir(vname,vurl,14,vimg)
+				addDir(vname,vurl,16,vimg)
+			except:
+				pass
+		pagingList=soup.findAll('ul', {"class" : "pagination"})
+		if(len(pagingList) >0):
+			for item in pagingList[0].findAll('li'):
+				vname="Page "+ item.a.text
+				vurl=url.split('?')[0]+item.a["href"]
+				addDir(vname.encode('utf-8', 'ignore'),vurl,15,"")
+
+##############################################
+def List_Stars_In(url):
+	#return
+	link = GetContent(url)
+	if link == None:
+		return
+	try:
+		link =link.encode("UTF-8")
+	except: pass
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
+	soup = BeautifulSoup(newlink)
+	menucontent=soup.findAll('ul', {"class" : "list-episode-item"})
+	if(len(menucontent) >0):
+		for item in menucontent[0].findAll('li'):
+			#print item
+			vname=item.a.img["alt"]
+			vurl=strdomain+item.a["href"]
+			vimg=item.a.img["data-original"]
+			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
+	pagingList=soup.findAll('ul', {"class" : "pagination"})
+	if(len(pagingList) >0):
+		for item in pagingList[0].findAll('li'):
+			#print item
+			vname="Page "+ item.a["data-page"]
+			vurl=url+item.a["href"]
+			if(item.has_key("class")==False):
+				addDir(vname.encode('utf-8', 'ignore'),vurl,6,"")
+
+##############################################
+def Search_for_Stars():
+	try:
+		keyb = xbmc.Keyboard('', 'Enter search text')
+		keyb.doModal()
+		#searchText = '01'
+		if (keyb.isConfirmed()):
+				searchText = urllib.quote_plus(keyb.getText())
+		url = strdomain+'/search?type=stars&keyword='+searchText
+		List_Stars_In(url)
+	except: pass
+
+##############################################
 
 params=get_params()
 url=None
@@ -1129,7 +1223,13 @@ elif mode==11:
 elif mode==12:
 	GetMenu(url,url)
 elif mode==13:
-	List_Genres(strdomain+"/list-genres.html")
+	List_Genres(url)
 elif mode==14:
 	IndexLatest(url,False)
+elif mode==15:
+	List_Stars(url)
+elif mode==16:
+	List_Stars_In(url)
+elif mode==17:
+	Search_for_Stars()
 xbmcplugin.endOfDirectory(int(sysarg))
