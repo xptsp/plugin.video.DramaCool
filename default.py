@@ -15,18 +15,19 @@ from BeautifulSoup import SoupStrainer
 import urlresolver
 import time
 
+# Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
 AZ_DIRECTORIES = ['0','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y', 'Z']
+strdomain ='https://www2.dramacool.video'
+strdomain2 ='https://www.dramacool9.co'
+
+# Google Analytics stuff:
 if ADDON.getSetting('ga_visitor')=='':
 	from random import randint
 	ADDON.setSetting('ga_visitor',str(randint(0, 0x7fffffff)))
-
 PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
-VERSION = "2.0.2" #<---- PLUGIN VERSION
-
-strdomain ='https://www2.dramacool.video'
-strdomain2 ='https://www.dramacool9.co'
+VERSION = "2.0.3" #<---- PLUGIN VERSION
 
 ##############################################
 def HOME():
@@ -37,10 +38,10 @@ def HOME():
 	addDir('Dramas by Genre',strdomain+'/list-genres.html',13,'')
 	addDir('Latest Movies',strdomain+'/recently-added-movie',6,'')
 	addDir('Movies by Country', strdomain2+"/category/movies/", 12, '')
-	addDir('Latest KShows',strdomain+'/recently-added-kshow',6,'')
+	addDir('Latest KShow',strdomain+'/recently-added-kshow',6,'')
 	addDir('Search DramaCool',strdomain+'/search?type=movies&keyword=',4,'')
 	addDir('Popular Stars',strdomain+'/list-star.html',15,'')
-	addDir('Search Stars',strdomain+'/list-star.html',17,'')
+	addDir('Search Stars',strdomain+'/search?type=stars&keyword=',17,'')
 
 ##############################################
 def GetMenu(url,menutype):
@@ -425,11 +426,11 @@ def Episodes(url,name):
 			#print item
 			vname=item.h3.contents[0]
 			vurl=strdomain+item.a["href"]
-			vsubbed=item.findAll('span', {"class": "type SUB"})
-			if vsubbed != None:
-				vsubbed = vsubbed[0].string
-				if vsubbed != 'SUB':
-					vname = '[RAW] '+vname
+			vsubbed=item.findAll('span', {"class": "type subbed"})
+			if (len(vsubbed) == 0):
+				vsubbed=item.findAll('span', {"class": "type SUB"})
+			if (len(vsubbed) == 0):
+				vname = '[RAW] '+vname
 			addDir(vname.encode('utf-8', 'ignore'),vurl,7,"")
 
 ##############################################
@@ -452,11 +453,11 @@ def Episodes_co(url,name):
 			#print item
 			vname=item.h3.a["title"]
 			vurl=item.h3.a["href"]
-			vsubbed=item.findAll('span', {"class": "type SUB"})
-			if vsubbed != None:
-				vsubbed = vsubbed[0].string
-				if vsubbed != 'SUB':
-					vname = '[RAW] '+vname
+			vsubbed=item.findAll('span', {"class": "type subbed"})
+			if (len(vsubbed) == 0):
+				vsubbed=item.findAll('span', {"class": "type SUB"})
+			if (len(vsubbed) == 0):
+				vname = '[RAW] '+vname
 			addDir(vname.encode('utf-8', 'ignore'),vurl,11,"")
 
 ##############################################
@@ -1160,8 +1161,6 @@ def Search_for_Stars():
 		url = strdomain+'/search?type=stars&keyword='+searchText
 		List_Stars_In(url)
 	except: pass
-
-##############################################
 
 params=get_params()
 url=None
