@@ -1,3 +1,8 @@
+v2.0.4
+- Added ability to save which episode was last seen per series.
+- Added "Recently Viewed" submenu to main menu.
+- Moved "Please Wait!,Loading selected video" notification after check to see if video ID is non-blank.
+
 v2.0.3
 - Fixed "[RAW]" prefix code.
 

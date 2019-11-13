@@ -8,12 +8,24 @@ import xbmcaddon,xbmcplugin,xbmcgui
 try: import simplejson as json
 except ImportError: import json
 import cgi
-import datetime
+import datetime, time
 from BeautifulSoup import BeautifulSoup
 from BeautifulSoup import BeautifulStoneSoup
 from BeautifulSoup import SoupStrainer
 import urlresolver
 import time
+
+# Import database stuff and create database if necessary:
+try:
+	from sqlite3 import dbapi2
+	from sqlite3 import Error
+except:
+	from pysqlite2 import dbapi2
+	from pysqlite2mport import Error
+
+# Define the recent database:
+con1 = dbapi2.connect(os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool', 'recent.db'))
+con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
 
 # Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
@@ -27,10 +39,11 @@ if ADDON.getSetting('ga_visitor')=='':
 	ADDON.setSetting('ga_visitor',str(randint(0, 0x7fffffff)))
 PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
-VERSION = "2.0.3" #<---- PLUGIN VERSION
+VERSION = "2.0.4" #<---- PLUGIN VERSION
 
 ##############################################
 def HOME():
+	addDir('Recently Viewed',strdomain,18,'')
 	addDir('List A-Z',strdomain+"/drama-list/char-start-#.html",3,'')
 	addDir('Latest Dramas',strdomain+'/recently-added',6,'')
 	addDir('Most Popular Dramas',strdomain+'/most-popular-drama',6,'')
@@ -80,7 +93,7 @@ def IndexLatest(url,notify=True):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.a.img["alt"]
+			vname=item.a.img["alt"].trim()
 			vurl=strdomain+item.a["href"]
 			vimg=item.a.img["data-original"]
 			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
@@ -111,7 +124,7 @@ def Index_co(url):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.a["title"]
+			vname=item.a["title"].trim()
 			vurl=item.a["href"]
 			vimg=item.a.img["data-original"]
 			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg)
@@ -133,6 +146,7 @@ def ListSource(url,series):
 		link =link.encode("UTF-8")
 	except: pass
 	newlink = ''.join(link.splitlines()).replace('\t','')
+	setLastPlayed(url,series)
 	soup = BeautifulSoup(newlink)
 	listcontent=soup.findAll('div', {"class" : "anime_muti_link"})[0]
 	srclist=listcontent.findAll('ul')
@@ -153,6 +167,7 @@ def ListSource_co(url,series):
 		link =link.encode("UTF-8")
 	except: pass
 	newlink = ''.join(link.splitlines()).replace('\t','')
+	setLastPlayed(url, series)
 	soup = BeautifulSoup(newlink)
 	srclist=soup.findAll('div', {"id" : "w-server"})
 	if(len(srclist) >0):
@@ -408,6 +423,8 @@ def SearchResults(url):
 
 ##############################################
 def Episodes(url,name):
+	d = xbmcgui.Dialog()
+	last_played = getLastPlayed(name)
 	link = GetContent(url)
 	if link == None:
 		return
@@ -424,14 +441,18 @@ def Episodes(url,name):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.h3.contents[0]
+			vname=item.h3.contents[0].replace(' Episode', ': Episode')
 			vurl=strdomain+item.a["href"]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
 				vsubbed=item.findAll('span', {"class": "type SUB"})
 			if (len(vsubbed) == 0):
 				vname = '[RAW] '+vname
-			addDir(vname.encode('utf-8', 'ignore'),vurl,7,"")
+			vselected = False
+			if last_played != None:
+				tname = vname+" "
+				vselected = (tname.find(last_played+" ") != -1)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,7,"",selected=vselected)
 
 ##############################################
 def Episodes_co(url,name):
@@ -458,7 +479,11 @@ def Episodes_co(url,name):
 				vsubbed=item.findAll('span', {"class": "type SUB"})
 			if (len(vsubbed) == 0):
 				vname = '[RAW] '+vname
-			addDir(vname.encode('utf-8', 'ignore'),vurl,11,"")
+			vselected = False
+			if last_played != None:
+				tname = vname+" "
+				vselected = (tname.find(last_played+" ") != -1)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,11,"",selected=vselected)
 
 ##############################################
 def ParseSeparate(vcontent,namesearch,urlsearch):
@@ -546,7 +571,9 @@ def playVideo(videoType,videoId):
 	if (videoId == ""):
 		d = xbmcgui.Dialog()
 		d.ok("DramaCool", "HTML parsing error encountered!", "Unable to determine video URL to play video!", "Please try another source!")
-	elif (videoType == "youtube"):
+		return
+	xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
+	if (videoType == "youtube"):
 		try:
 			url = getYoutube(videoId)
 			xbmcPlayer = xbmc.Player()
@@ -595,11 +622,10 @@ def GetDirVideoUrl(url, cj):
 
 ##############################################
 def loadVideos(url,name):
-   newlink=url
-   xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
-   print newlink
-   playtype="direct"
-   if (newlink.find("dailymotion") > -1):
+	newlink=url
+	print newlink
+	playtype="direct"
+	if (newlink.find("dailymotion") > -1):
 		match=re.compile('(dailymotion\.com\/(watch\?(.*&)?v=|(embed|v|user)\/))([^\?&"\'>]+)').findall(newlink)
 		lastmatch = match[0][len(match[0])-1]
 		link = 'http://www.dailymotion.com/'+str(lastmatch)
@@ -617,10 +643,10 @@ def loadVideos(url,name):
 		dm_low=re.compile('"sdURL":"(.+?)"').findall(newseqeunce)
 		dm_high=re.compile('"hqURL":"(.+?)"').findall(newseqeunce)
 		vidlink=urllib2.unquote(dm_low[0]).decode("utf8")
-   elif (newlink.find("4shared") > -1):
+	elif (newlink.find("4shared") > -1):
 		d = xbmcgui.Dialog()
 		d.ok('Not Implemented','Sorry 4Shared links',' not implemented yet')
-   elif (newlink.find("docs.google.com") > -1 or newlink.find("drive.google.com") > -1):
+	elif (newlink.find("docs.google.com") > -1 or newlink.find("drive.google.com") > -1):
 		docid=re.compile('/d/(.+?)/preview').findall(newlink)[0]
 		cj = cookielib.LWPCookieJar()
 		(cj,vidcontent) = GetContent2("https://docs.google.com/get_video_info?docid="+docid,"", cj)
@@ -648,23 +674,23 @@ def loadVideos(url,name):
 		for cookie in cj:
 			cookiestr += '%s=%s;' % (cookie.name, cookie.value)
 		vidlink=url+ ('|Cookie=%s' % cookiestr)
-   elif (newlink.find("vimeo") > -1):
+	elif (newlink.find("vimeo") > -1):
 		idmatch =re.compile("http://player.vimeo.com/video/([^\?&\"\'>]+)").findall(newlink)
 		if(len(idmatch) > 0):
 			playVideo('vimeo',idmatch[0])
-   elif (newlink.find("youtube") > -1) and (newlink.find("playlists") > -1):
+	elif (newlink.find("youtube") > -1) and (newlink.find("playlists") > -1):
 		playlistid=re.compile('playlists/(.+?)\?v').findall(newlink)
 		vidlink="plugin://plugin.video.youtube?path=/root/video&action=play_all&playlist="+playlistid[0]
-   elif (newlink.find("youtube") > -1) and (newlink.find("list=") > -1):
+	elif (newlink.find("youtube") > -1) and (newlink.find("list=") > -1):
 		playlistid=re.compile('videoseries\?list=(.+?)&').findall(newlink+"&")
 		vidlink="plugin://plugin.video.youtube?path=/root/video&action=play_all&playlist="+playlistid[0]
-   elif (newlink.find("youtube") > -1) and (newlink.find("/p/") > -1):
+	elif (newlink.find("youtube") > -1) and (newlink.find("/p/") > -1):
 		playlistid=re.compile('/p/(.+?)\?').findall(newlink)
 		vidlink="plugin://plugin.video.youtube?path=/root/video&action=play_all&playlist="+playlistid[0]
-   elif (newlink.find("youtube") > -1) and (newlink.find("/embed/") > -1):
+	elif (newlink.find("youtube") > -1) and (newlink.find("/embed/") > -1):
 		playlistid=re.compile('/embed/(.+?)\?').findall(newlink+"?")
 		vidlink=getYoutube(playlistid[0])
-   elif (newlink.find("youtube") > -1):
+	elif (newlink.find("youtube") > -1):
 		match=re.compile('(youtu\.be\/|youtube-nocookie\.com\/|youtube\.com\/(watch\?(.*&)?v=|(embed|v|user)\/))([^\?&"\'>]+)').findall(newlink)
 		if(len(match) == 0):
 			match=re.compile('http://www.youtube.com/watch\?v=(.+?)&dk;').findall(newlink1)
@@ -673,7 +699,7 @@ def loadVideos(url,name):
 		print "in youtube" + lastmatch[0]
 		vidlink=lastmatch
 		playtype="youtube"
-   else:
+	else:
 		sources = []
 		label=name
 		hosted_media = urlresolver.HostedMediaFile(url=newlink, title=label)
@@ -687,7 +713,7 @@ def loadVideos(url,name):
 			except:
 				pass
 
-   playVideo(playtype,vidlink)
+	playVideo(playtype,vidlink)
 
 ##############################################
 def OtherContent():
@@ -873,9 +899,7 @@ def send_request_to_google_analytics(utm_url):
 	ua='Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 	import urllib2
 	try:
-		req = urllib2.Request(utm_url, None,
-									{'User-Agent':ua}
-									 )
+		req = urllib2.Request(utm_url, None, {'User-Agent':ua} )
 		response = urllib2.urlopen(req).read()
 	except:
 		print ("GA fail: %s" % utm_url)
@@ -918,14 +942,14 @@ def GA(group,name):
 					"&utmcc=__utma=%s" % ".".join(["1", VISITOR, VISITOR, VISITOR, VISITOR,"2"])
 		else:
 			if group=="None":
-			   utm_url = utm_gif_location + "?" + \
-						"utmwv=" + VERSION + \
-						"&utmn=" + str(randint(0, 0x7fffffff)) + \
-						"&utmp=" + quote(PATH+"/"+name) + \
-						"&utmac=" + UATRACK + \
-						"&utmcc=__utma=%s" % ".".join(["1", VISITOR, VISITOR, VISITOR, VISITOR,"2"])
+				utm_url = utm_gif_location + "?" + \
+					"utmwv=" + VERSION + \
+					"&utmn=" + str(randint(0, 0x7fffffff)) + \
+					"&utmp=" + quote(PATH+"/"+name) + \
+					"&utmac=" + UATRACK + \
+					"&utmcc=__utma=%s" % ".".join(["1", VISITOR, VISITOR, VISITOR, VISITOR,"2"])
 			else:
-			   utm_url = utm_gif_location + "?" + \
+				utm_url = utm_gif_location + "?" + \
 						"utmwv=" + VERSION + \
 						"&utmn=" + str(randint(0, 0x7fffffff)) + \
 						"&utmp=" + quote(PATH+"/"+group+"/"+name) + \
@@ -1012,11 +1036,12 @@ def APP_LAUNCH():
 checkGA()
 
 ##############################################
-def addLink(name,url,mode,iconimage):
-	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
+def addLink(name,url,mode,iconimage,selected=False):
+	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&series="+urllib.quote_plus(name)
 	ok=True
 	liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
 	liz.setInfo( type="Video", infoLabels={ "Title": name } )
+	liz.select(selected)
 	contextMenuItems = []
 	liz.addContextMenuItems(contextMenuItems, replaceItems=True)
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz)
@@ -1033,7 +1058,7 @@ def addNext(formvar,url,mode,iconimage):
 
 ##############################################
 def addDir(name,url,mode,iconimage,selected=False):
-	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
+	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&series="+urllib.quote_plus(name)
 	ok=True
 	liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
 	liz.select(selected)
@@ -1162,6 +1187,36 @@ def Search_for_Stars():
 		List_Stars_In(url)
 	except: pass
 
+##############################################
+def setLastPlayed(url, series):
+	if series == None:
+		return
+	pos=series.rfind(": Episode ")
+	if pos > 0:
+		vepisode=series[pos+2:]
+		series=series[0:pos]
+	con1.cursor().execute('''INSERT OR REPLACE INTO recent (series, episode, last_url, last_visit) VALUES (?,?,?,?)''', ( series, vepisode, url, int(time.time()) ))
+	con1.commit()
+
+##############################################
+def getLastPlayed(series):
+	cur=con1.cursor()
+	cur.execute("SELECT episode FROM recent WHERE series=? LIMIT 1", [series])
+	for row in cur:
+		return row[0]
+	return None
+
+##############################################
+def Recently_Viewed():
+	cur=con1.cursor()
+	cur.execute("SELECT series, last_url FROM recent ORDER BY last_visit DESC")
+	for item in cur:
+		vname=item[0]
+		vurl=item[1]
+		vimg=''
+		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
+
+##############################################
 params=get_params()
 url=None
 name=None
@@ -1231,4 +1286,8 @@ elif mode==16:
 	List_Stars_In(url)
 elif mode==17:
 	Search_for_Stars()
+elif mode==18:
+	Recently_Viewed()
+
 xbmcplugin.endOfDirectory(int(sysarg))
+con1.close()
