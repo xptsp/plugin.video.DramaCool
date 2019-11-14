@@ -1,3 +1,8 @@
+v2.0.5
+- Fixed code stripping unnecessary whitespace from beginning and end of all listings.
+- Fixed "ListAZ" function so that items starting with other than English alphabet works now.
+- Fixed issue where title for one series was double-quoted in HTML, leaving no title for series in Kodi.
+
 v2.0.4
 - Added ability to save which episode was last seen per series.
 - Added "Recently Viewed" submenu to main menu.

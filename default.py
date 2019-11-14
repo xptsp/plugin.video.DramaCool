@@ -29,7 +29,7 @@ con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, ep
 
 # Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
-AZ_DIRECTORIES = ['0','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y', 'Z']
+AZ_DIRECTORIES = ['other','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y', 'Z']
 strdomain ='https://www2.dramacool.video'
 strdomain2 ='https://www.dramacool9.co'
 
@@ -39,7 +39,7 @@ if ADDON.getSetting('ga_visitor')=='':
 	ADDON.setSetting('ga_visitor',str(randint(0, 0x7fffffff)))
 PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
-VERSION = "2.0.4" #<---- PLUGIN VERSION
+VERSION = "2.0.5" #<---- PLUGIN VERSION
 
 ##############################################
 def HOME():
@@ -93,7 +93,7 @@ def IndexLatest(url,notify=True):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.a.img["alt"].trim()
+			vname=item.a.img["alt"]
 			vurl=strdomain+item.a["href"]
 			vimg=item.a.img["data-original"]
 			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
@@ -124,7 +124,7 @@ def Index_co(url):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.a["title"].trim()
+			vname=item.a["title"]
 			vurl=item.a["href"]
 			vimg=item.a.img["data-original"]
 			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg)
@@ -182,7 +182,7 @@ def ListSource_co(url,series):
 def ListAZ(url,mode):
 	for character in AZ_DIRECTORIES:
 		chrUrl= url.replace('#',character)
-		addDir(character,chrUrl,mode,"")
+		addDir(character.capitalize(),chrUrl,mode,"")
 
 ##############################################
 def log(description, level=0):
@@ -366,15 +366,24 @@ def SEARCH():
 ##############################################
 def INDEX(url):
 	link = GetContent(url)
+	if link == None:
+		return
 	try:
 		link =link.encode("UTF-8")
 	except: pass
-	newlink = ''.join(link.splitlines()).replace('\t','')
+	newline = link
+	try:
+		newlink = ''.join(link.splitlines())
+	except: pass
+	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	listcontent=soup.findAll('ul', {"class" : "switch-block list-episode-item"})
 	for item in listcontent[0].findAll('li'):
 		#print item
 		vname=item.a["title"]
+		if vname == "":
+			vname = item.a.h3.text
+		vname=vname.strip()
 		vurl=strdomain+item.a["href"]
 		vimg=item.a.img["data-original"]
 		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
@@ -442,6 +451,7 @@ def Episodes(url,name):
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.h3.contents[0].replace(' Episode', ': Episode')
+			vname=vname.strip()
 			vurl=strdomain+item.a["href"]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -473,6 +483,7 @@ def Episodes_co(url,name):
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.h3.a["title"]
+			vname=vname.strip()
 			vurl=item.h3.a["href"]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -1104,6 +1115,7 @@ def List_Genres(url):
 			#print item
 			try:
 				vname=item.h3.contents[0]
+				vname=vname.strip()
 				vurl=strdomain+item.a["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
 			except:
@@ -1129,7 +1141,7 @@ def List_Stars(url):
 			#print item
 			try:
 				vname=item.h3.text
-				vname=vname.encode('utf-8', 'ignore')
+				vname=vname.strip().encode('utf-8', 'ignore')
 				vurl=strdomain+item.a["href"]
 				vimg=item.a.img["data-original"]
 				#addDir(vname,vurl,14,vimg)
@@ -1139,7 +1151,7 @@ def List_Stars(url):
 		pagingList=soup.findAll('ul', {"class" : "pagination"})
 		if(len(pagingList) >0):
 			for item in pagingList[0].findAll('li'):
-				vname="Page "+ item.a.text
+				vname="Page "+ item.a.text.strip()
 				vurl=url.split('?')[0]+item.a["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,15,"")
 
@@ -1162,7 +1174,7 @@ def List_Stars_In(url):
 	if(len(menucontent) >0):
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.a.img["alt"]
+			vname=item.a.img["alt"].strip()
 			vurl=strdomain+item.a["href"]
 			vimg=item.a.img["data-original"]
 			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
@@ -1170,7 +1182,7 @@ def List_Stars_In(url):
 	if(len(pagingList) >0):
 		for item in pagingList[0].findAll('li'):
 			#print item
-			vname="Page "+ item.a["data-page"]
+			vname="Page "+ item.a["data-page"].strip()
 			vurl=url+item.a["href"]
 			if(item.has_key("class")==False):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,6,"")
