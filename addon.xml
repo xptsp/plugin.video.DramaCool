@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.DramaCool" version="2.0.5" name="DramaCool" provider-name="XPtsp">
+<addon id="plugin.video.DramaCool" version="2.1.0" name="DramaCool" provider-name="XPtsp">
 	<requires>
 		<import addon="script.module.simplejson" />
 		<import addon="script.module.beautifulsoup" version="3.0.8"/>
