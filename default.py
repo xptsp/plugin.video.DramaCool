@@ -626,6 +626,8 @@ def playVideo(videoType,videoId):
 		xbmcPlayer.play(url)
 	elif (videoType == "tudou"):
 		url = 'plugin://plugin.video.tudou/?mode=3&url=' + videoId
+		xbmcPlayer = xbmc.Player()
+		xbmcPlayer.play(url)
 	else:
 		xbmcPlayer = xbmc.Player()
 		xbmcPlayer.play(videoId)
