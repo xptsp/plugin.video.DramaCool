@@ -23,15 +23,20 @@ except:
 	from pysqlite2 import dbapi2
 	from pysqlite2mport import Error
 
-# Define the recent database:
+# Make sure that the plugin userdata folder exists:
 path=os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool')
-try:
+if not os.path.isdir(path):
 	os.mkdir(path)
-except:
-	pass
+
+# Define the recent database:
 con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
 con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
-con2 = dbapi2.connect(os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool', 'dramas.db'))
+
+# If dramas database doesn't exist, prompt to download it.  If failed, create the database:
+if not os.path.exists(os.path.join(path, 'dramas.db')):
+	d = xbmcgui.Dialog()
+	d.ok('DramaCool','Need to download the "dramas.db" file.')
+con2 = dbapi2.connect(os.path.join(path, 'dramas.db'))
 con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER)")
 
 # Addon settings:
@@ -387,16 +392,25 @@ def INDEX(url):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	listcontent=soup.findAll('ul', {"class" : "switch-block list-episode-item"})
-	for item in listcontent[0].findAll('li'):
+	items = listcontent[0].findAll('li')
+	pDialog = xbmcgui.DialogProgress()
+	pDialog.create('DramaCool', 'Processing Drama list...', '')
+	max = len(items)
+	cnt = 0
+	for item in items:
 		#print item
 		vname=item.a["title"]
 		if vname == "":
 			vname = item.a.h3.text
 		vname=vname.strip()
+		pDialog.update( cnt * 100 / max, 'Processing Drama list...', vname)
+		cnt += 1
 		vurl=strdomain+item.a["href"]
 		info = Drama_Overview(vurl, vname)
 		vimg=item.a.img["data-original"]
-		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info[2])
+		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
+	pDialog.close()
+
 	#pagecontent=soup.findAll('div', {"class" : re.compile("page-nav*")})
 	# label=""#re.compile("/label/(.+?)\?").findall(url)[0]
 	# pagenum=re.compile("PageNo=(.+?)").findall(url)
@@ -1085,12 +1099,22 @@ def addNext(formvar,url,mode,iconimage):
 	return ok
 
 ##############################################
-def addDir(name,url,mode,iconimage,plot="",selected=False):
+def addDir(name,url,mode,iconimage,info=None,selected=False):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&series="+urllib.quote_plus(name)
 	ok=True
 	liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
 	liz.select(selected)
-	liz.setInfo( type="Video", infoLabels={ "Title": name, "plot": plot } )
+	data = {
+		"Title": name
+	}
+	if info != None:
+		if info[2] != '':
+			data['plot'] = info[2]
+		if info[1] > 0:
+			data['episode'] = info[1]
+		if info[6] > 0:
+			data['year'] = info[6];
+	liz.setInfo( type="Video", infoLabels=data )
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
 
@@ -1282,10 +1306,6 @@ def Drama_Overview(url, series, episode = 0):
 		return row
 	#return row
 
-	# Log that we are getting information about a series:
-	#============================================
-	xbmc.log("Getting information for '"+series+"'",xbmc.LOGINFO)
-
 	# Get the drama information from the website:
 	#============================================
 	xbmc.log("Getting information for '"+series+"'",xbmc.LOGINFO)
@@ -1323,7 +1343,7 @@ def Drama_Overview(url, series, episode = 0):
 
 	# Get the IMDB link from the website (if possible):
 	#============================================
-	if row[9] == 0:
+	if row[9] == 0 or row[8] == '':
 		link = GetContent('https://www.imdb.com/find?q='+urllib.quote_plus(series)+'&ref_=nv_sr_sm', False)
 		if link != None:
 			try:
@@ -1464,5 +1484,4 @@ elif mode==18:
 
 xbmcplugin.endOfDirectory(int(sysarg))
 con1.close()
-con2.commit()
 con2.close()
