@@ -746,16 +746,14 @@ def loadVideos(url,name):
 		hosted_media = urlresolver.HostedMediaFile(url=newlink, title=label)
 		try:
 			sources.append(hosted_media)
-		except:
-			pass
+		except: pass
 		source = urlresolver.choose_source(sources)
 		print "inresolver=" + newlink
 		vidlink = ""
 		if source:
 			try:
 				vidlink = source.resolve()
-			except:
-				pass
+			except: pass
 
 	playVideo(playtype,vidlink)
 
@@ -1161,8 +1159,7 @@ def List_Genres(url):
 				vname=vname.strip()
 				vurl=strdomain+item.a["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
-			except:
-				pass
+			except: pass
 
 ##############################################
 def List_Stars(url):
@@ -1189,8 +1186,7 @@ def List_Stars(url):
 				vimg=item.a.img["data-original"]
 				#addDir(vname,vurl,14,vimg)
 				addDir(vname,vurl,16,vimg)
-			except:
-				pass
+			except: pass
 		pagingList=soup.findAll('ul', {"class" : "pagination"})
 		if(len(pagingList) >0):
 			for item in pagingList[0].findAll('li'):
@@ -1330,13 +1326,11 @@ def Drama_Overview(url, series, episode = 0):
 		row[4] = items[2].text
 		try:
 			row[4] = row[4].split(":")[1]
-		except:
-			pass
+		except: pass
 		row[5] = items[3].text
 		try:
 			row[5] = row[5].split(":")[1]
-		except:
-			pass
+		except: pass
 		#d = xbmcgui.Dialog()
 		#d.ok('Drama_Overview',"Plot",row[1])
 		#d.ok('Drama_Overview',"Country",row[3])
@@ -1392,8 +1386,7 @@ def Drama_Overview(url, series, episode = 0):
 			row[1] = item.text
 			try:
 				row[1] = row[1].split(",")[1]
-			except:
-				pass
+			except: pass
 			row[1] = row[1].replace("Ep", "")
 			row[0] = row2[0] + ": Episode " + str(row[1])
 			try:
