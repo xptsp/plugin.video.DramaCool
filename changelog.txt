@@ -1,3 +1,7 @@
+v2.1.0
+- Added code to gather series/movie overview information from DramaCool site.
+- Added progress bar to show progress of drama gathering activity.
+
 v2.0.5
 - Fixed code stripping unnecessary whitespace from beginning and end of all listings.
 - Fixed "ListAZ" function so that items starting with other than English alphabet works now.
