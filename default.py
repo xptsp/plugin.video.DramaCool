@@ -33,11 +33,8 @@ con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
 con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
 
 # If dramas database doesn't exist, prompt to download it.  If failed, create the database:
-if not os.path.exists(os.path.join(path, 'dramas.db')):
-	d = xbmcgui.Dialog()
-	d.ok('DramaCool','Need to download the "dramas.db" file.')
 con2 = dbapi2.connect(os.path.join(path, 'dramas.db'))
-con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER)")
+con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER)")
 
 # Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
@@ -48,6 +45,7 @@ strdomain2 ='https://www.dramacool9.co'
 force_reload = ADDON.getSetting('force_reload')
 if force_reload == '':
 	force_reload = False
+cancel_load = False
 
 # Google Analytics stuff:
 if ADDON.getSetting('ga_visitor')=='':
@@ -106,13 +104,14 @@ def IndexLatest(url,notify=True):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "switch-block list-episode-item"})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.a.img["alt"]
 			vurl=strdomain+item.a["href"]
 			vimg=item.a.img["data-original"]
-			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg)
+			info = Drama_Overview(vname, vurl, vimg)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg, info)
 	pagingList=soup.findAll('ul', {"class" : "pagination"})
 	if(len(pagingList) >0):
 		for item in pagingList[0].findAll('li'):
@@ -137,13 +136,14 @@ def Index_co(url):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('main', {"id" : "main"})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.a["title"]
 			vurl=item.a["href"]
 			vimg=item.a.img["data-original"]
-			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg)
+			info = Drama_Overview(vname, vurl, vimg)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg,info)
 		pagingList=menucontent[0].findAll('div', {"class" : "nav-links"})
 		if(len(pagingList) >0):
 			for item in pagingList[0].findAll('a',{"class" : "page-numbers"}):
@@ -407,7 +407,9 @@ def INDEX(url):
 		if vname == "":
 			vname = item.a.h3.text
 		vname=vname.strip()
-		pDialog.update( cnt * 100 / max, 'Processing Drama list...', vname)
+		per = cnt * 100 / max
+		pDialog.update( per, '(' + str(per) + '%) Processing Drama ' + str(cnt) + ' of ' + str(max) + '...', 'Drama: ' + vname)
+		cancel_load = pDialog.iscanceled()
 		cnt += 1
 		vurl=strdomain+item.a["href"]
 		info = Drama_Overview(vname, vurl)
@@ -476,14 +478,14 @@ def Episodes(url,name):
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "list-episode-item-2 all-episode"})
 	row = Drama_Overview(name, url)
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.h3.contents[0].replace(' Episode', ': Episode')
 			vname=vname.strip()
-			vepi = vname.split(":")[-1].replace("Episode ","")
+			vepi = vname.split(": Episode ")[-1]
 			vurl=strdomain+item.a["href"]
-			info = Episode_Overview(vname, vurl, vepi, row)
+			info = Drama_Overview(vname, vurl, row[7], row)
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -494,7 +496,7 @@ def Episodes(url,name):
 			if last_played != None:
 				tname = vname+" "
 				vselected = (tname.find(last_played+" ") != -1)
-			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info[2],selected=vselected)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,selected=vselected,info=info)
 
 ##############################################
 def Episodes_co(url,name):
@@ -512,12 +514,13 @@ def Episodes_co(url,name):
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('div', {"id" : "all-episodes"})
 	row = Drama_Overview(name, url)
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
-			vname=item.h3.a["title"]
+			vname=item.h3.a["title"].replace(' Episode', ': Episode')
 			vname=vname.strip()
 			vurl=item.h3.a["href"]
+			vepi = vname.split(": Episode ")[-1]
 			info = Episode_Overview(vname, vurl, vepi, row)
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
@@ -1158,7 +1161,7 @@ def List_Genres(url):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "switch-block list-episode-item-2"})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			try:
@@ -1183,7 +1186,7 @@ def List_Stars(url):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "list-star"})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			try:
@@ -1217,7 +1220,7 @@ def List_Stars_In(url):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "list-episode-item"})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.a.img["alt"].strip()
@@ -1253,7 +1256,7 @@ def setLastPlayed(url, series):
 	if pos > 0:
 		vepisode=series[pos+2:]
 		series=series[0:pos]
-	con1.cursor().execute('''INSERT OR REPLACE INTO recent (series, episode, last_url, last_visit) VALUES (?,?,?,?)''', ( series, vepisode, url, int(time.time()) ))
+	con1.cursor().execute('INSERT OR REPLACE INTO recent (series, episode, last_url, last_visit) VALUES (?,?,?,?)', ( series, vepisode, url, int(time.time()) ))
 	con1.commit()
 
 ##############################################
@@ -1272,41 +1275,54 @@ def Recently_Viewed():
 		vname=item[0]
 		vurl=item[1]
 		info = Drama_Overview(vname)
-		addDir(vname.encode('utf-8', 'ignore'),vurl,5,info[7],info)
+		vimg = info[7]
+		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info=info)
 
 ##############################################
 def ExtractAlphanumeric(str):
-    return re.sub('[^A-Za-z0-9\s\(\)]+', '', str)
+    return re.sub('[^A-Za-z0-9\s\(\)\:]+', '', str)
 
 ##############################################
 def Drama_Overview(series, url='', vimg='', default=None):
+	# Strip episode number out of the series name:
+	try:
+		episode = series.split(': Episode ')[1]
+	except:
+		episode = 0
+
 	# Get the series information from the database:
 	series = ExtractAlphanumeric(series)
 	cur=con2.cursor()
-	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload FROM dramas WHERE series = ?', [series])
+	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload, total FROM dramas WHERE series = ? AND episode = ?', (series,episode))
 	rows = cur.fetchall()
 	if len(rows) > 0:
 		# If no reload required, return the row:
-		if rows[0][9] == 0 and not force_reload:
-			return rows[0]
 		row = list(rows[0])
+		row[0] = series
+		if row[9] == 0 and not force_reload:
+			return row
+		row[0] = 0
 	else:
 		# Set up the database row using provided row, or default settings:
 		if default == None:
 			row = list()
-			row.append(series)	# 0 = Series
-			row.append(0)		# 1 = Episode
-			row.append('')		# 2 = Plot
-			row.append('')		# 3 = Drama Cast
-			row.append('')		# 4 = Country
-			row.append('')		# 5 = Status
-			row.append('')		# 6 = Released
-			row.append(vimg)	# 7 = Image URL
-			row.append('')		# 8 = IMDB link
-			row.append(0)		# 9 = Reload flag (1 = force reloading drama info)
+			row.append(series)	#  0 = Series
+			row.append(0)		#  1 = Episode
+			row.append('')		#  2 = Plot
+			row.append('')		#  3 = Drama Cast
+			row.append('')		#  4 = Country
+			row.append('')		#  5 = Status
+			row.append('')		#  6 = Released
+			row.append(vimg)	#  7 = Image URL
+			row.append('')		#  8 = IMDB link
+			row.append(0)		#  9 = Reload flag (1 = force reloading drama info)
+			row.append(0)		# 10 = Episodes count
 		else:
 			row = list(default)
-			row[1] = episode
+
+	# If we are asking about a particular episode, return at this point:
+	if episode > 0 or cancel_load:
+		return row
 
 	# Get the drama information from the website:
 	link = GetContent(url, False)
@@ -1322,7 +1338,7 @@ def Drama_Overview(series, url='', vimg='', default=None):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('div', {'class' : 'info'})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		items = menucontent[0].findAll('p')
 		i = 0
 		if  items[1].text == 'Description:':
@@ -1330,6 +1346,7 @@ def Drama_Overview(series, url='', vimg='', default=None):
 		row[2] = items[1+i].text
 		row[4] = items[2+i].text.split(':')[-1]
 		row[5] = items[3+i].text.split(':')[-1]
+
 		#d = xbmcgui.Dialog()
 		#d.ok('Drama_Overview','Plot',row[1])
 		#d.ok('Drama_Overview','Cast',row[3])
@@ -1337,6 +1354,7 @@ def Drama_Overview(series, url='', vimg='', default=None):
 		#d.ok('Drama_Overview','Status',row[5])
 		#d.ok('Drama_Overview','Released',row[6])
 		#d.ok('Drama_Overview','Image URL',row[7])
+		#d.ok('Drama_Overview','Number of episodes available',row[10])
 
 	# Get the IMDB link from the website (if possible):
 	if row[9] == 0 or row[8] == '':
@@ -1353,31 +1371,16 @@ def Drama_Overview(series, url='', vimg='', default=None):
 			newline = newline.replace('\t','')
 			soup = BeautifulSoup(newlink)
 			menucontent=soup.findAll('table', {'class' : 'findList'})
-			if(len(menucontent) >0):
+			if len(menucontent) > 0:
 				row[8] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
 				#d = xbmcgui.Dialog()
 				#d.ok('Drama_Overview','IMDB link',row[8])
 
 	# Insert the drama information into the database:
-	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload) VALUES (?,?,?,?,?,?,?,?,?,?)', row)
+	row[10] = 0
+	default = list(row)
+	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total) VALUES (?,?,?,?,?,?,?,?,?,?,?)', default)
 	con2.commit()
-
-##############################################
-def Episode_Overview(series, url='', episode=0, default=None):
-	return default
-
-	# Get the episode information from the database:
-	series = ExtractAlphanumeric(series)
-	cur=con2.cursor()
-	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload FROM dramas WHERE series = ? AND episode = ?', (series, episode))
-	rows = cur.fetchall()
-	if len(rows) > 0:
-		# If no reload required, return the row:
-		if rows[0][9] == 0 and not force_reload:
-			return rows[0]
-		row = list(rows[0])
-	else:
-		row = list(default)
 
 	# Get the episode information from IMDB.com:
 	try:	
@@ -1386,6 +1389,7 @@ def Episode_Overview(series, url='', episode=0, default=None):
 		link = None
 	if link == None:
 		return row
+	row[9] = 0
 	row2 = list(row)
 
 	try:
@@ -1401,29 +1405,31 @@ def Episode_Overview(series, url='', episode=0, default=None):
 	# Start by getting the links to the episode screenshots:
 	default = list(row2)
 	menucontent=soup.findAll('div', {'class':re.compile('list_item *')})
-	if(len(menucontent) >0):
+	if len(menucontent) > 0:
 		for item in menucontent:
 			# Make copy of the original row, in case stuff can't be found:
 			row = list(row2)
+			default[10] += 1
 
 			# Episode number:
 			vimg = item.findAll('div', {'class': 'image'})[0]
-			row[1] = vimg.text.split(',')[-1].replace('Ep','')
+			row[1] = vimg.text.split(',')[-1].replace('Ep','').strip()
 			row[0] = row[0] + ': Episode ' + str(row[1])
+			row[0] = row[0]
 			#d = xbmcgui.Dialog()
 			#d.ok('Drama_Overview','Episode Number', row[1])
 
-			# Episode release date:
 			desc = item.findAll('div', {'class': 'info'})
 			if len(desc) > 0:
+				# Episode release date:
 				row[6] = desc[0].findAll('div', {'class': 'airdate'})[0].text
 				#d = xbmcgui.Dialog()
 				#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Release Date', row[6])
 
 				# Episode description:
 				row[2] = desc[0].findAll('div', {'class': 'item_description'})[0].text
-				d = xbmcgui.Dialog()
-				d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
+				#d = xbmcgui.Dialog()
+				#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
 		
 			# Image URL:
 			try:
@@ -1433,16 +1439,12 @@ def Episode_Overview(series, url='', episode=0, default=None):
 			#d = xbmcgui.Dialog()
 			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Image URL', row[7])
 
-			# If it is the episode we are looking for, save it for later:
-			if episode == row[1]:
-				default = list(row)
-
 			# Save it to the database:
-			con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload) VALUES (?,?,?,?,?,?,?,?,?,?)', row)
+			con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total) VALUES (?,?,?,?,?,?,?,?,?,?,?)', row)
 
-	# Return the information to the user:
+	# Commit all changes to the database:
 	con2.commit()
-	return default
+	return row
 
 ##############################################
 params=get_params()
@@ -1469,6 +1471,7 @@ except:
 
 #url='http://www.khmeraccess.com/video/viewvideo/6604/31end.html'
 sysarg=str(sys.argv[1])
+xbmcplugin.setContent(int(sys.argv[1]), "video")
 if mode==None or url==None or len(url)<1:
 	#OtherContent()
 	HOME()
@@ -1514,4 +1517,5 @@ elif mode==18:
 
 xbmcplugin.endOfDirectory(int(sysarg))
 con1.close()
+con2.commit()
 con2.close()
