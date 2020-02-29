@@ -143,7 +143,7 @@ def Index_co(url):
 			vurl=item.a["href"]
 			vimg=item.a.img["data-original"]
 			info = Drama_Overview(vname, vurl, vimg)
-			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg,info)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,10,vimg,info=info)
 		pagingList=menucontent[0].findAll('div', {"class" : "nav-links"})
 		if(len(pagingList) >0):
 			for item in pagingList[0].findAll('a',{"class" : "page-numbers"}):
@@ -166,14 +166,15 @@ def ListSource(url,series):
 	soup = BeautifulSoup(newlink)
 	listcontent=soup.findAll('div', {"class" : "anime_muti_link"})[0]
 	srclist=listcontent.findAll('ul')
+	info = Drama_Overview(series)
 	if(len(srclist) >0):
 		for item in srclist[0].findAll('li'):
 			#print item
 			vname=item.contents[0].encode('utf-8', 'ignore')
 			vurl=item["data-video"]
-			#if(vname!="Standard Server" and vname!="Kvid"):
-			#	addLink(vname,vurl,8,"")
-			addLink(vname,vurl,8,"")
+			if vurl[0:2] == '//':
+				vurl = "https:" + vurl
+			addLink(vname,vurl,8,info[7])
 
 ##############################################
 def ListSource_co(url,series):
@@ -192,8 +193,8 @@ def ListSource_co(url,series):
 			#print item
 			vname=item.contents[0].encode('utf-8', 'ignore')
 			vurl=item["data-server"]
-			#if(vname!="Standard Server" and vname!="Kvid"):
-			#	addLink(vname,vurl,8,"")
+			if vurl[0:2] == '//':
+				vurl = "https:" + vurl
 			addLink(vname,vurl,8,"")
 
 ##############################################
@@ -400,7 +401,7 @@ def INDEX(url):
 	pDialog = xbmcgui.DialogProgress()
 	pDialog.create('DramaCool', 'Processing Drama list...', '')
 	max = len(items)
-	cnt = 0
+	cnt = 1
 	for item in items:
 		#print item
 		vname=item.a["title"]
@@ -412,8 +413,8 @@ def INDEX(url):
 		cancel_load = pDialog.iscanceled()
 		cnt += 1
 		vurl=strdomain+item.a["href"]
-		info = Drama_Overview(vname, vurl)
 		vimg=item.a.img["data-original"]
+		info = Drama_Overview(vname, vurl, vimg)
 		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
 	pDialog.close()
 
@@ -496,7 +497,7 @@ def Episodes(url,name):
 			if last_played != None:
 				tname = vname+" "
 				vselected = (tname.find(last_played+" ") != -1)
-			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,selected=vselected,info=info)
+			addDir(vname.encode('utf-8', 'ignore'),vurl,7,vimg,selected=vselected,info=info)
 
 ##############################################
 def Episodes_co(url,name):
@@ -521,7 +522,7 @@ def Episodes_co(url,name):
 			vname=vname.strip()
 			vurl=item.h3.a["href"]
 			vepi = vname.split(": Episode ")[-1]
-			info = Episode_Overview(vname, vurl, vepi, row)
+			info = Drama_Overview(vname, vurl, row[7], row)
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -621,7 +622,6 @@ def playVideo(videoType,videoId):
 		d = xbmcgui.Dialog()
 		d.ok("DramaCool", "HTML parsing error encountered!", "Unable to determine video URL to play video!", "Please try another source!")
 		return
-	xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
 	if (videoType == "youtube"):
 		try:
 			url = getYoutube(videoId)
@@ -673,6 +673,7 @@ def GetDirVideoUrl(url, cj):
 
 ##############################################
 def loadVideos(url,name):
+	xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
 	newlink=url
 	print newlink
 	playtype="direct"
@@ -1250,7 +1251,8 @@ def Search_for_Stars():
 
 ##############################################
 def setLastPlayed(url, series):
-	if series == None:
+	series = ExtractAlphanumeric(series.strip())
+	if series == None or series == "":
 		return
 	pos=series.rfind(": Episode ")
 	if pos > 0:
@@ -1261,6 +1263,7 @@ def setLastPlayed(url, series):
 
 ##############################################
 def getLastPlayed(series):
+	series = ExtractAlphanumeric(series.strip())
 	cur=con1.cursor()
 	cur.execute("SELECT episode FROM recent WHERE series=? LIMIT 1", [series])
 	for row in cur:
@@ -1272,9 +1275,9 @@ def Recently_Viewed():
 	cur=con1.cursor()
 	cur.execute("SELECT series, last_url FROM recent ORDER BY last_visit DESC")
 	for item in cur:
-		vname=item[0]
+		vname=item[0].strip()
 		vurl=item[1]
-		info = Drama_Overview(vname)
+		info = Drama_Overview(vname, vurl)
 		vimg = info[7]
 		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info=info)
 
@@ -1298,7 +1301,6 @@ def Drama_Overview(series, url='', vimg='', default=None):
 	if len(rows) > 0:
 		# If no reload required, return the row:
 		row = list(rows[0])
-		row[0] = series
 		if row[9] == 0 and not force_reload:
 			return row
 		row[0] = 0
@@ -1415,7 +1417,6 @@ def Drama_Overview(series, url='', vimg='', default=None):
 			vimg = item.findAll('div', {'class': 'image'})[0]
 			row[1] = vimg.text.split(',')[-1].replace('Ep','').strip()
 			row[0] = row[0] + ': Episode ' + str(row[1])
-			row[0] = row[0]
 			#d = xbmcgui.Dialog()
 			#d.ok('Drama_Overview','Episode Number', row[1])
 
