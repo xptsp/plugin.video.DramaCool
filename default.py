@@ -34,7 +34,7 @@ con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, ep
 
 # If dramas database doesn't exist, prompt to download it.  If failed, create the database:
 con2 = dbapi2.connect(os.path.join(path, 'dramas.db'))
-con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER)")
+con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT)")
 
 # Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
@@ -69,6 +69,7 @@ def HOME():
 	addDir('Search DramaCool',strdomain+'/search?type=movies&keyword=',4,'')
 	addDir('Popular Stars',strdomain+'/list-star.html',15,'')
 	addDir('Search Stars',strdomain+'/search?type=stars&keyword=',17,'')
+	addDir('Refresh Database',strdomain+"/drama-list/char-start-#.html",19,'')
 
 ##############################################
 def GetMenu(url,menutype):
@@ -383,7 +384,7 @@ def SEARCH():
 	except: pass
 
 ##############################################
-def INDEX(url):
+def INDEX(url, addListing=True):
 	link = GetContent(url)
 	if link == None:
 		return
@@ -415,7 +416,8 @@ def INDEX(url):
 		vurl=strdomain+item.a["href"]
 		vimg=item.a.img["data-original"]
 		info = Drama_Overview(vname, vurl, vimg)
-		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
+		if addListing:
+			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
 	pDialog.close()
 
 	#pagecontent=soup.findAll('div', {"class" : re.compile("page-nav*")})
@@ -487,6 +489,7 @@ def Episodes(url,name):
 			vepi = vname.split(": Episode ")[-1]
 			vurl=strdomain+item.a["href"]
 			info = Drama_Overview(vname, vurl, row[7], row)
+			vname = info[10]
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -523,6 +526,7 @@ def Episodes_co(url,name):
 			vurl=item.h3.a["href"]
 			vepi = vname.split(": Episode ")[-1]
 			info = Drama_Overview(vname, vurl, row[7], row)
+			vname = info[10]
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -613,7 +617,7 @@ def postContent(url,data,referr):
 ##############################################
 def playVideo(videoType,videoId):
 	url = ""
-	print videoType + '=' + videoId
+	#print videoType + '=' + videoId
 	win = xbmcgui.Window(10000)
 	win.setProperty('1ch.playing.title', videoId)
 	win.setProperty('1ch.playing.season', str(3))
@@ -1116,7 +1120,8 @@ def addDir(name,url,mode,iconimage,info=None,selected=False):
 	liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
 	liz.select(selected)
 	data = {
-		"Title": name
+		"Title": name,
+		"mediatype":"episode",
 	}
 	if info != None:
 		if info[2] != '':
@@ -1124,7 +1129,7 @@ def addDir(name,url,mode,iconimage,info=None,selected=False):
 		if info[1] > 0:
 			data['episode'] = info[1]
 		if info[6] > 0:
-			data['year'] = info[6];
+			data['year'] = info[6]
 	liz.setInfo( type="Video", infoLabels=data )
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
@@ -1293,10 +1298,19 @@ def Drama_Overview(series, url='', vimg='', default=None):
 	except:
 		episode = 0
 
+	# Strip the season number out of the series name:
+	try:
+		parts = series.split(" Season ")
+		season = parts[1]
+		search = parts[0]
+	except:
+		season = 1
+		search = series
+
 	# Get the series information from the database:
 	series = ExtractAlphanumeric(series)
 	cur=con2.cursor()
-	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload, total FROM dramas WHERE series = ? AND episode = ?', (series,episode))
+	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title FROM dramas WHERE series=? AND episode=?', (series,episode))
 	rows = cur.fetchall()
 	if len(rows) > 0:
 		# If no reload required, return the row:
@@ -1319,12 +1333,21 @@ def Drama_Overview(series, url='', vimg='', default=None):
 			row.append('')		#  8 = IMDB link
 			row.append(0)		#  9 = Reload flag (1 = force reloading drama info)
 			row.append(0)		# 10 = Episodes count
+			row.append(series)	# 11 = Episode title
 		else:
 			row = list(default)
 
 	# If we are asking about a particular episode, return at this point:
 	if episode > 0 or cancel_load:
 		return row
+
+	# Make sure we are using a URL for the drama details, not an episode:
+	parts = url.split("-episode-")
+	if len(parts) > 1:
+		pos = parts[0].rfind('/')
+		url = url[0:pos] + "/drama-detail/" + parts[0][pos+1:]
+		#d = xbmcgui.Dialog()
+		#d.ok('Drama_Overview',url)
 
 	# Get the drama information from the website:
 	link = GetContent(url, False)
@@ -1350,7 +1373,7 @@ def Drama_Overview(series, url='', vimg='', default=None):
 		row[5] = items[3+i].text.split(':')[-1]
 
 		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview','Plot',row[1])
+		#d.ok('Drama_Overview','Plot',row[2])
 		#d.ok('Drama_Overview','Cast',row[3])
 		#d.ok('Drama_Overview','Country',row[4])
 		#d.ok('Drama_Overview','Status',row[5])
@@ -1359,9 +1382,8 @@ def Drama_Overview(series, url='', vimg='', default=None):
 		#d.ok('Drama_Overview','Number of episodes available',row[10])
 
 	# Get the IMDB link from the website (if possible):
-	if row[9] == 0 or row[8] == '':
-		series = series.split(':')[0]
-		link = GetContent('https://www.imdb.com/find?q='+urllib.quote_plus(series)+'&exact=true&ref_=nv_sr_sm', False)
+	if row[8] == '':
+		link = GetContent('https://www.imdb.com/find?q='+urllib.quote_plus(search)+'&exact=true&ref_=nv_sr_sm', False)
 		if link != None:
 			try:
 				link =link.encode('UTF-8')
@@ -1378,15 +1400,53 @@ def Drama_Overview(series, url='', vimg='', default=None):
 				#d = xbmcgui.Dialog()
 				#d.ok('Drama_Overview','IMDB link',row[8])
 
+	# Get the IMDB link from the website (if possible):
+	if row[8] == '':
+		link = GetContent('https://www.imdb.com/find?q='+urllib.quote_plus(search)+'&ref_=nv_sr_sm', False)
+		if link != None:
+			try:
+				link =link.encode('UTF-8')
+			except: pass
+			newline = link
+			try:
+				newlink = ''.join(link.splitlines())
+			except: pass
+			newline = newline.replace('\t','')
+			soup = BeautifulSoup(newlink)
+			menucontent=soup.findAll('table', {'class' : 'findList'})
+			if len(menucontent) > 0:
+				row[8] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
+				#d = xbmcgui.Dialog()
+				#d.ok('Drama_Overview','IMDB link',row[8])
+
+	# If no description is provided at this point, see if IMDB.com has a description that we can use:
+	if row[2] == "" and row[8] != "":
+		link = GetContent(row[8], False)
+		if link != None:
+			try:
+				link =link.encode('UTF-8')
+			except: pass
+			newline = link
+			try:
+				newlink = ''.join(link.splitlines())
+			except: pass
+			newline = newline.replace('\t','')
+			soup = BeautifulSoup(newlink)
+			menucontent=soup.findAll('div', {'class' : 'summary_text'})
+			if len(menucontent) > 0:
+				row[2] = menucontent[0].text
+				#d = xbmcgui.Dialog()
+				#d.ok('Drama_Overview','Plot',row[2])
+
 	# Insert the drama information into the database:
 	row[10] = 0
 	default = list(row)
-	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total) VALUES (?,?,?,?,?,?,?,?,?,?,?)', default)
+	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', row)
 	con2.commit()
 
 	# Get the episode information from IMDB.com:
 	try:	
-		link = GetContent(row[8]+'episodes?season=1&ref_=tt_eps_sn_1', False)
+		link = GetContent(row[8]+'episodes?season='+str(season)+'&ref_=tt_eps_sn_'+str(season), False)
 	except:
 		link = None
 	if link == None:
@@ -1429,9 +1489,20 @@ def Drama_Overview(series, url='', vimg='', default=None):
 
 				# Episode description:
 				row[2] = desc[0].findAll('div', {'class': 'item_description'})[0].text
+				if row[2].find("Know what this is about?") > -1:
+					row[2] = ''
 				#d = xbmcgui.Dialog()
 				#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
 		
+			# Episode release date:
+			row[10] = vimg.a['title']
+			if row[10].find("Episode #") == -1:
+				row[10] = "Episode " + str(row[1]) + ": " + row[10]
+			else:
+				row[10] = row[0]
+			#d = xbmcgui.Dialog()
+			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Title', row[10])
+
 			# Image URL:
 			try:
 				row[7] = vimg.img['src']
@@ -1441,11 +1512,19 @@ def Drama_Overview(series, url='', vimg='', default=None):
 			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Image URL', row[7])
 
 			# Save it to the database:
-			con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total) VALUES (?,?,?,?,?,?,?,?,?,?,?)', row)
+			con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', row)
+
+	con2.cursor().execute('UPDATE dramas SET total=? WHERE series=?', (default[10], series))
 
 	# Commit all changes to the database:
 	con2.commit()
 	return row
+
+##############################################
+def Update_Database(url):
+	for character in AZ_DIRECTORIES:
+		chrUrl= url.replace('#',character)
+		INDEX(chrUrl, False)
 
 ##############################################
 params=get_params()
@@ -1515,6 +1594,8 @@ elif mode==17:
 	Search_for_Stars()
 elif mode==18:
 	Recently_Viewed()
+elif mode==19:
+	Update_Database(strdomain+"/drama-list/char-start-#.html")
 
 xbmcplugin.endOfDirectory(int(sysarg))
 con1.close()

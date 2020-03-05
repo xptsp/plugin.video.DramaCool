@@ -1,6 +1,7 @@
 v2.1.0
-- Added code to gather series/movie overview information from DramaCool site.
+- Added code to gather series/movie/episode plot descriptions from DramaCool site and from IMDB.com
 - Added progress bar to show progress of drama gathering activity.
+- Changed episode name to reflect the episode name from IMDB.com if available.
 
 v2.0.5
 - Fixed code stripping unnecessary whitespace from beginning and end of all listings.
