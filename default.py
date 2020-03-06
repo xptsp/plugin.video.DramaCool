@@ -1504,10 +1504,15 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 				#d.ok('Drama_Overview','Plot',row[2])
 
 	# Insert the drama information into the database:
-	row[3] = '[]'
-	default = list(row)
 	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title, genre) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
 	con2.commit()
+
+	# If only one episode and statis is completed, skip the rest!  Otherwise, gather episode information:
+	if row[10] == 1 and row[5] == 'Completed':
+		return row
+	row[3] = '[]'
+	row[2] = ''
+	default = list(row)
 
 	# Get the episode information from IMDB.com:
 	try:	
