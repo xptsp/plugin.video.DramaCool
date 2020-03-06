@@ -1134,11 +1134,7 @@ def addDir(name,url,mode,iconimage,info=None,selected=False):
 		if info[5] != '':
 			data['status'] = info[5]
 		if info[6] > 0:
-			try:
-				data['aired'] = info[6].split(" ")[0]
-			except:
-				d = xbmcgui.Dialog()
-				d.ok('Drama_Overview',"Series="+name,"info[6]="+info[6])
+			data['aired'] = info[6].split(" ")[0]
 		#row.append(vimg)	#  7 = Image URL
 		if info[8] != '':
 			try:
@@ -1548,19 +1544,15 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			#d = xbmcgui.Dialog()
 			#d.ok('Drama_Overview','Episode Number', row[1])
 
-			desc = item.findAll('div', {'class': 'info'})
-			if len(desc) > 0:
-				# Episode release date:
-				row[6] = desc[0].findAll('div', {'class': 'airdate'})[0].text
-				#d = xbmcgui.Dialog()
-				#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Release Date', row[6])
-
-				# Episode description:
+			# Episode description:
+			try:			
 				row[2] = desc[0].findAll('div', {'class': 'item_description'})[0].text
-				if row[2].find("Know what this is about?") > -1:
-					row[2] = ''
-				#d = xbmcgui.Dialog()
-				#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
+			except:
+				row[2] = ''
+			if row[2].find("Know what this is about?") > -1:
+				row[2] = ''
+			#d = xbmcgui.Dialog()
+			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
 		
 			# Episode release date:
 			row[11] = vimg.a['title']
