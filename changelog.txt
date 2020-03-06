@@ -2,6 +2,8 @@ v2.1.0
 - Added code to gather series/movie/episode plot descriptions from DramaCool site and from IMDB.com
 - Added progress bar to show progress of drama gathering activity.
 - Changed episode name to reflect the episode name from IMDB.com if available.
+- Added drama cast, first released, country, and status to Kodi information display.
+- Added ability to cancel the gathering of drama information.
 
 v2.0.5
 - Fixed code stripping unnecessary whitespace from beginning and end of all listings.
