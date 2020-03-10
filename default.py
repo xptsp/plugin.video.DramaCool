@@ -1580,9 +1580,18 @@ def reporthook(block_number, block_size, total_size):
 	     progress_bar.update(percent)
 
 def Download_DB(dest):
-	progress_bar.create('DramaCool', 'Downloading prebuilt Drama Database!')
+	# Close access to the existing database:
+	try:
+		con2.close()
+	except: pass
+
+	# Download the database from DropBox:
+	progress_bar.create('DramaCool', 'Downloading prebuilt Drama Database from Dropbox!', 'Please Wait!')
 	urllib.urlretrieve("http://www.dropbox.com/s/db1f70vloyy69nf/dramas.db?dl=1", dest, reporthook)
 	progress_bar.close()
+
+	# Reconnect with the dramas database:
+	con2 = dbapi2.connect(dest)
 
 ##############################################
 # Make sure that the plugin userdata folder exists:
@@ -1595,10 +1604,10 @@ con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
 con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
 
 # If dramas database doesn't exist, prompt to download it.  If failed, create the database:
-name = os.path.join(path, 'dramas.db')
-if not os.path.isfile(name):
-	Download_DB(name)
-con2 = dbapi2.connect(name)
+db_path = os.path.join(path, 'dramas.db')
+if not os.path.isfile(db_path):
+	Download_DB(db_path)
+con2 = dbapi2.connect(db_path)
 con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT)")
 
 # Get parameters passed to script:
@@ -1638,8 +1647,7 @@ elif mode==3:
 	#sysarg="-1"
 	ListAZ(strdomain+"/drama-list/char-start-#.html",2)
 elif mode==4:
-	#SEARCH()
-	Download_DB(name)
+	SEARCH()
 elif mode==5:
 	GA("episode",name)
 	Episodes(url,name)
@@ -1673,6 +1681,8 @@ elif mode==19:
 	Refresh_Database(strdomain+"/drama-list/char-start-#.html")
 elif mode==20:
 	Remove_Series(url)
+elif mode==21:
+	Download_DB(db_path)
 
 xbmcplugin.endOfDirectory(int(sysarg))
 con1.close()
