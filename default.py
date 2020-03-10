@@ -1,4 +1,4 @@
-import httplib
+import httplib,ast
 import urllib,urllib2,re,sys
 import cookielib,os,string,cookielib,StringIO,gzip
 import os,time,base64,logging
@@ -33,7 +33,8 @@ con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
 con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
 
 # If dramas database doesn't exist, prompt to download it.  If failed, create the database:
-con2 = dbapi2.connect(os.path.join(path, 'dramas.db'))
+name=os.path.join(path, 'dramas.db')
+con2 = dbapi2.connect(name)
 con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT)")
 
 # Addon settings:
@@ -42,17 +43,13 @@ AZ_DIRECTORIES = ['other','A','B','C','D','E','F','G','H','I','J','K','L','M','N
 strdomain ='https://www2.dramacool.video'
 strdomain2 ='https://www.dramacool9.co'
 
-force_reload = ADDON.getSetting('force_reload')
-if force_reload == '':
-	force_reload = False
-
 # Google Analytics stuff:
 if ADDON.getSetting('ga_visitor')=='':
 	from random import randint
 	ADDON.setSetting('ga_visitor',str(randint(0, 0x7fffffff)))
 PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
-VERSION = "2.0.5" #<---- PLUGIN VERSION
+VERSION = "2.1.0" #<---- PLUGIN VERSION
 
 ##############################################
 def HOME():
@@ -383,7 +380,7 @@ def SEARCH():
 	except: pass
 
 ##############################################
-def INDEX(url, addListing=True):
+def INDEX(url, index=-1):
 	link = GetContent(url)
 	if link == None:
 		return
@@ -399,7 +396,10 @@ def INDEX(url, addListing=True):
 	listcontent=soup.findAll('ul', {"class" : "switch-block list-episode-item"})
 	items = listcontent[0].findAll('li')
 	pDialog = xbmcgui.DialogProgress()
-	pDialog.create('DramaCool', 'Processing Drama list...', '')
+	title = 'DramaCool'
+	if index :
+		title = title + ': Processing ' + AZ_DIRECTORIES[index] + "'s..."
+	pDialog.create(title, 'Processing Drama list...', '')
 	max = len(items)
 	cnt = 1
 	for item in items:
@@ -413,8 +413,9 @@ def INDEX(url, addListing=True):
 		cnt += 1
 		vurl=strdomain+item.a["href"]
 		vimg=item.a.img["data-original"]
-		info = Drama_Overview(vname, vurl, vimg, cancelled=pDialog.iscanceled())
-		if addListing:
+		canceled = pDialog.iscanceled()
+		info = Drama_Overview(vname, vurl, vimg, cancelled=canceled)
+		if index == -1:
 			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
 	pDialog.close()
 
@@ -437,6 +438,8 @@ def INDEX(url, addListing=True):
 		  # addDir("<< Previous",buildNextPage(prev,label),2,"")
 	# if(nexurl!=""):
 		  # addDir("Next >>",nexurl,2,"")
+
+	return canceled
 
 ##############################################
 def is_number(s):
@@ -480,6 +483,8 @@ def Episodes(url,name):
 	menucontent=soup.findAll('ul', {"class" : "list-episode-item-2 all-episode"})
 	row = Drama_Overview(name, url)
 	if len(menucontent) > 0:
+		if last_played != None:
+			addLink("[ Remove Series from Recently Viewed ]", name, 20, "")
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.h3.contents[0].replace(' Episode', ': Episode')
@@ -487,7 +492,7 @@ def Episodes(url,name):
 			vepi = vname.split(": Episode ")[-1]
 			vurl=strdomain+item.a["href"]
 			info = Drama_Overview(vname, vurl, row[7], row)
-			vname = info[10]
+			vname = info[11]
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -525,7 +530,7 @@ def Episodes_co(url,name):
 			vurl=item.h3.a["href"]
 			vepi = vname.split(": Episode ")[-1]
 			info = Drama_Overview(vname, vurl, row[7], row)
-			vname = info[10]
+			vname = info[11]
 			vimg = info[7]
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -587,8 +592,7 @@ def GetContent(url,notify=True):
 	except:
 		print url
 		if notify == True:
-			d = xbmcgui.Dialog()
-			d.ok(url,"Can't Connect to site",'Try again in a moment')
+			xbmcgui.Dialog().ok(url,"Can't Connect to site",'Try again in a moment')
 
 ##############################################
 def postContent(url,data,referr):
@@ -622,8 +626,7 @@ def playVideo(videoType,videoId):
 	win.setProperty('1ch.playing.season', str(3))
 	win.setProperty('1ch.playing.episode', str(4))
 	if (videoId == ""):
-		d = xbmcgui.Dialog()
-		d.ok("DramaCool", "HTML parsing error encountered!", "Unable to determine video URL to play video!", "Please try another source!")
+		xbmcgui.Dialog().ok("DramaCool", "HTML parsing error encountered!", "Unable to determine video URL to play video!", "Please try another source!")
 		return
 	if (videoType == "youtube"):
 		try:
@@ -699,8 +702,7 @@ def loadVideos(url,name):
 		dm_high=re.compile('"hqURL":"(.+?)"').findall(newseqeunce)
 		vidlink=urllib2.unquote(dm_low[0]).decode("utf8")
 	elif (newlink.find("4shared") > -1):
-		d = xbmcgui.Dialog()
-		d.ok('Not Implemented','Sorry 4Shared links',' not implemented yet')
+		xbmcgui.Dialog().ok('Not Implemented','Sorry 4Shared links',' not implemented yet')
 	elif (newlink.find("docs.google.com") > -1 or newlink.find("drive.google.com") > -1):
 		docid=re.compile('/d/(.+?)/preview').findall(newlink)[0]
 		cj = cookielib.LWPCookieJar()
@@ -1330,7 +1332,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	if len(rows) > 0:
 		# If no reload required, return the row:
 		row = list(rows[0])
-		if row[9] == 0 and not force_reload:
+		if row[9] == 0:
 			return row
 		row[0] = 0
 	else:
@@ -1366,8 +1368,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	if len(parts) > 1:
 		pos = parts[0].rfind('/')
 		url = url[0:pos] + "/drama-detail/" + parts[0][pos+1:]
-		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview',url)
+		#xbmcgui.Dialog().ok('Drama_Overview',url)
 
 	# Get the drama information from the website:
 	link = GetContent(url, False)
@@ -1391,23 +1392,19 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 		if  items[1].text == 'Description:':
 			i = 1
 		row[2] = items[1+i].text
-		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview','Plot',row[2])
+		#xbmcgui.Dialog().ok('Drama_Overview','Plot',row[2])
 
 		# Drama Country
 		row[4] = items[2+i].text.split(':')[-1]
-		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview','Country',row[4])
+		#xbmcgui.Dialog().ok('Drama_Overview','Country',row[4])
 
 		# Drama Status
 		row[5] = items[3+i].text.split(':')[-1]
-		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview','Status',row[5])
+		#xbmcgui.Dialog().ok('Drama_Overview','Status',row[5])
 
 		# Drama Genre
 		row[12] = items[5+i].text.split(':')[-1]
-		#d = xbmcgui.Dialog()
-		#d.ok('Drama_Overview','Genre',row[12])
+		#xbmcgui.Dialog().ok('Drama_Overview','Genre',row[12])
 
 	# Get first release date:
 	row[10] = 0
@@ -1418,28 +1415,24 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			test = item.text.split(" ")[0]
 			if row[6] == "" or row[6] > test:
 				row[6] = test
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','First Released',row[6])
+			#xbmcgui.Dialog().ok('Drama_Overview','First Released',row[6])
 
 	# Gather the cast together into an array:
 	row[3] = []
 	menucontent=soup.findAll('div', {'class' : 'slider-star'})
-	if len(menucontent) > 0:		
+	if len(menucontent) > 0:
 		for item in menucontent[0].findAll('div', {'class' : 'item'}):
 			sname = item.text.split("(")[0].strip()
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Star Name',sname)
+			#xbmcgui.Dialog().ok('Drama_Overview','Star Name',sname)
 			simg = item.img["src"]
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Star Image URL',simg)
+			#xbmcgui.Dialog().ok('Drama_Overview','Star Image URL',simg)
 			star = {"name":sname, "thumbnail":simg}
 			row[3].append(star)
 
 	# Store cast as JSON string:
 	row[3] = json.dumps(row[3])
-	#d = xbmcgui.Dialog()
-	#d.ok('Drama_Overview','Cast JSON string',row[3])
-			
+	#xbmcgui.Dialog().ok('Drama_Overview','Cast JSON string',row[3])
+
 	# Get the IMDB link from the website (if possible):
 	if row[8] == '':
 		try:
@@ -1459,8 +1452,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			menucontent=soup.findAll('table', {'class' : 'findList'})
 			if len(menucontent) > 0:
 				row[8] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
-				#d = xbmcgui.Dialog()
-				#d.ok('Drama_Overview','IMDB link: Try # 1',row[8])
+				#xbmcgui.Dialog().ok('Drama_Overview','IMDB link: Try # 1',row[8])
 
 	# Get the IMDB link from the website (if possible):
 	if row[8] == '':
@@ -1481,8 +1473,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			menucontent=soup.findAll('table', {'class' : 'findList'})
 			if len(menucontent) > 0:
 				row[8] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
-				#d = xbmcgui.Dialog()
-				#d.ok('Drama_Overview','IMDB link: Try # 2',row[8])
+				#xbmcgui.Dialog().ok('Drama_Overview','IMDB link: Try # 2',row[8])
 
 	# If no description is provided at this point, see if IMDB.com has a description that we can use:
 	if row[2] == "" and row[8] != "":
@@ -1500,8 +1491,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			menucontent=soup.findAll('div', {'class' : 'summary_text'})
 			if len(menucontent) > 0:
 				row[2] = menucontent[0].text
-				#d = xbmcgui.Dialog()
-				#d.ok('Drama_Overview','Plot',row[2])
+				#xbmcgui.Dialog().ok('Drama_Overview','Plot',row[2])
 
 	# Insert the drama information into the database:
 	con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title, genre) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
@@ -1510,17 +1500,17 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	# If only one episode and statis is completed, skip the rest!  Otherwise, gather episode information:
 	if row[10] == 1 and row[5] == 'Completed':
 		return row
+	default = list(row)
 	row[3] = '[]'
 	row[2] = ''
-	default = list(row)
 
 	# Get the episode information from IMDB.com:
-	try:	
+	try:
 		link = GetContent(row[8]+'episodes?season='+str(season)+'&ref_=tt_eps_sn_'+str(season), False)
 	except:
 		link = None
 	if link == None:
-		return row
+		return default
 	row[9] = 0
 	row2 = list(row)
 
@@ -1546,35 +1536,31 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			vimg = item.findAll('div', {'class': 'image'})[0]
 			row[1] = vimg.text.split(',')[-1].replace('Ep','').strip()
 			row[0] = row[0] + ': Episode ' + str(row[1])
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Episode Number', row[1])
+			#xbmcgui.Dialog().ok('Drama_Overview','Episode Number', row[1])
 
 			# Episode description:
-			try:			
+			try:
 				row[2] = desc[0].findAll('div', {'class': 'item_description'})[0].text
 			except:
 				row[2] = ''
 			if row[2].find("Know what this is about?") > -1:
 				row[2] = ''
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
-		
+			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
+
 			# Episode release date:
 			row[11] = vimg.a['title']
 			if row[11].find("Episode #") == -1:
 				row[11] = "Episode " + str(row[1]) + ": " + row[11]
 			else:
 				row[11] = row[0]
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Title', row[10])
+			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Title', row[10])
 
 			# Image URL:
 			try:
 				row[7] = vimg.img['src']
 			except:
 				row[7] = row2[7]
-			#d = xbmcgui.Dialog()
-			#d.ok('Drama_Overview','Episode ' + str(row[1]) + ' Image URL', row[7])
+			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Image URL', row[7])
 
 			# Save it to the database:
 			con2.cursor().execute('INSERT OR REPLACE INTO dramas (series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title, genre) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
@@ -1585,51 +1571,21 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 
 ##############################################
 def Refresh_Database(url):
+	c = 0
 	for character in AZ_DIRECTORIES:
-		chrUrl= url.replace('#',character)
-		INDEX(chrUrl, False)
+		if INDEX(url.replace('#',character), c):
+			return
+		c += 1
 
 ##############################################
-def download(url, destination, dp=None, headers=None, cookies=None,
-             allow_redirects=True, verify=True, timeout=30, auth=None):
-    if not dp:
-        dp = xbmcgui.DialogProgressBG()
-        dp.create('Downloading')
-    try:
-        with open(destination, 'wb') as f:
-            start = time.time()
-            r = requests.get(url, headers=headers, cookies=cookies,
-                             allow_redirects=allow_redirects, verify=verify,
-                             timeout=timeout, auth=auth, stream=True)
-            content_length = int(r.headers.get('content-length'))
-            if content_length is None:
-                f.write(r.content)
-            else:
-                dl = 0
-                for chunk in r.iter_content(chunk_size=content_length/100):
-                    dl += len(chunk)
-                    if chunk:
-                        f.write(chunk)
-                    progress = (dl * 100 / content_length)
-                    byte_speed = dl / (time.time() - start)
-                    kbps_speed = byte_speed / 1024
-                    mbps_speed = kbps_speed / 1024
-                    downloaded = float(dl) / (1024 * 1024)
-                    file_size = float(content_length) / (1024 * 1024)
-                    if byte_speed > 0:
-                        eta = (content_length - dl) / byte_speed
-                    else:
-                        eta = 0
-                    line1 = '[COLOR darkgoldenrod]%.1f Mb[/COLOR] Of [COLOR darkgoldenrod]%.1f Mb[/COLOR]' %(downloaded, file_size)
-                    line2 = 'Speed: [COLOR darkgoldenrod]%.01f Mbps[/COLOR]' %mbps_speed
-                    line2 += ' ETA: [COLOR darkgoldenrod]%02d:%02d[/COLOR]' %divmod(eta, 60)
-                    dp.update(progress, line1, line2)
-        dp.close()
-    except:
-        dp.close()
-        xbmcgui.Dialog().ok('[COLOR red]Error[/COLOR]', 'Sorry Something Went Wrong Please Try Again')
-    
+def Remove_Series(series):
+	cur=con1.cursor()
+	cur.execute("DELETE FROM recent WHERE series=?", [series])
+	con1.commit()
+	xbmcgui.Dialog().ok('DramaCool','Series "'+series+'" has been removed from the recently viewed page.  Go back to the main page of the DramaCool app and select "Recently Viewed" to see the updated page.')
+
 ##############################################
+# Get parameters passed to script:
 params=get_params()
 try:
 	url=urllib.unquote_plus(params["url"])
@@ -1659,8 +1615,7 @@ if mode==None or url==None or len(url)<1:
 	#OtherContent()
 	HOME()
 elif mode==2:
-	#d = xbmcgui.Dialog()
-	#d.ok('mode 2',str(url),' ingore errors lol')
+	#xbmcgui.Dialog().ok('mode 2',str(url),' ingore errors lol')
 	GA("INDEX",name)
 	INDEX(url)
 elif mode==3:
@@ -1699,6 +1654,8 @@ elif mode==18:
 	Recently_Viewed()
 elif mode==19:
 	Refresh_Database(strdomain+"/drama-list/char-start-#.html")
+elif mode==20:
+	Remove_Series(url)
 
 xbmcplugin.endOfDirectory(int(sysarg))
 con1.close()
