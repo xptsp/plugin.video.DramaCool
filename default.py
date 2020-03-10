@@ -23,20 +23,6 @@ except:
 	from pysqlite2 import dbapi2
 	from pysqlite2mport import Error
 
-# Make sure that the plugin userdata folder exists:
-path=os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool')
-if not os.path.isdir(path):
-	os.mkdir(path)
-
-# Define the recent database:
-con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
-con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
-
-# If dramas database doesn't exist, prompt to download it.  If failed, create the database:
-name=os.path.join(path, 'dramas.db')
-con2 = dbapi2.connect(name)
-con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT)")
-
 # Addon settings:
 ADDON = xbmcaddon.Addon(id='plugin.video.DramaCool')
 AZ_DIRECTORIES = ['other','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y', 'Z']
@@ -467,7 +453,6 @@ def SearchResults(url):
 ##############################################
 def Episodes(url,name):
 	d = xbmcgui.Dialog()
-	last_played = getLastPlayed(name)
 	link = GetContent(url)
 	if link == None:
 		return
@@ -481,8 +466,9 @@ def Episodes(url,name):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('ul', {"class" : "list-episode-item-2 all-episode"})
-	row = Drama_Overview(name, url)
 	if len(menucontent) > 0:
+		row = Drama_Overview(name, url)
+		last_played = getLastPlayed(name)
 		if last_played != None:
 			addLink("[ Remove Series from Recently Viewed ]", name, 20, "")
 		for item in menucontent[0].findAll('li'):
@@ -521,8 +507,11 @@ def Episodes_co(url,name):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 	menucontent=soup.findAll('div', {"id" : "all-episodes"})
-	row = Drama_Overview(name, url)
 	if len(menucontent) > 0:
+		row = Drama_Overview(name, url)
+		last_played = getLastPlayed(name)
+		if last_played != None:
+			addLink("[ Remove Series from Recently Viewed ]", name, 20, "")
 		for item in menucontent[0].findAll('li'):
 			#print item
 			vname=item.h3.a["title"].replace(' Episode', ': Episode')
@@ -1579,12 +1568,39 @@ def Refresh_Database(url):
 
 ##############################################
 def Remove_Series(series):
-	cur=con1.cursor()
-	cur.execute("DELETE FROM recent WHERE series=?", [series])
+	con1.cursor().execute("DELETE FROM recent WHERE series=?", [series])
 	con1.commit()
 	xbmcgui.Dialog().ok('DramaCool','Series "'+series+'" has been removed from the recently viewed page.  Go back to the main page of the DramaCool app and select "Recently Viewed" to see the updated page.')
 
 ##############################################
+progress_bar = xbmcgui.DialogProgress()
+def reporthook(block_number, block_size, total_size):
+	if 0 == block_number & 511:
+	     percent = (block_number * block_size * 100) / total_size
+	     progress_bar.update(percent)
+
+def Download_DB(dest):
+	progress_bar.create('DramaCool', 'Downloading prebuilt Drama Database!')
+	urllib.urlretrieve("http://www.dropbox.com/s/db1f70vloyy69nf/dramas.db?dl=1", dest, reporthook)
+	progress_bar.close()
+
+##############################################
+# Make sure that the plugin userdata folder exists:
+path=os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool')
+if not os.path.isdir(path):
+	os.mkdir(path)
+
+# Define the recent database:
+con1 = dbapi2.connect(os.path.join(path, 'recent.db'))
+con1.cursor().execute("CREATE TABLE IF NOT EXISTS recent (series TEXT UNIQUE, episode TEXT, last_url TEXT, last_visit INTEGER)")
+
+# If dramas database doesn't exist, prompt to download it.  If failed, create the database:
+name = os.path.join(path, 'dramas.db')
+if not os.path.isfile(name):
+	Download_DB(name)
+con2 = dbapi2.connect(name)
+con2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released INTEGER, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT)")
+
 # Get parameters passed to script:
 params=get_params()
 try:
@@ -1622,7 +1638,8 @@ elif mode==3:
 	#sysarg="-1"
 	ListAZ(strdomain+"/drama-list/char-start-#.html",2)
 elif mode==4:
-	SEARCH()
+	#SEARCH()
+	Download_DB(name)
 elif mode==5:
 	GA("episode",name)
 	Episodes(url,name)
