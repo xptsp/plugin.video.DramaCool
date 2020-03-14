@@ -1,3 +1,7 @@
+v2.1.1
+- Complete rewrite of information-gathering code
+- Modified code so that all database calls return dictionaries instead of tuples.
+
 v2.1.0
 - Added code to gather series/movie/episode plot descriptions from DramaCool site and from IMDB.com
 - Added progress bar to show progress of drama gathering activity.
