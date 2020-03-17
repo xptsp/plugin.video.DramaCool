@@ -38,7 +38,7 @@ PATH = "PhumiKhmer"  #<---- PLUGIN NAME MINUS THE "plugin.video"
 UATRACK="UA-40129315-1" #<---- GOOGLE ANALYTICS UA NUMBER
 VERSION = "2.1.0" #<---- PLUGIN VERSION
 
-##############################################
+################################################################################
 def HOME():
 	addDir('Recently Viewed',strdomain,18,'')
 	addDir('List A-Z',strdomain+"/drama-list/char-start-#.html",3,'')
@@ -55,7 +55,7 @@ def HOME():
 	addDir('Refresh Database',strdomain+"/drama-list/char-start-#.html",19,'')
 	addDir('Refresh Stars',strdomain+"/drama-list/char-start-#.html",22,'')
 
-##############################################
+################################################################################
 def GetMenu(url,menutype):
 	link = GetContent(url)
 	if link == None:
@@ -74,7 +74,7 @@ def GetMenu(url,menutype):
 				vname=str(item.a.contents[0]).strip()
 				addDir(vname,link,9,"")
 
-##############################################
+################################################################################
 def IndexLatest(url,notify=True):
 	link = GetContent(url,notify)
 	if link == None:
@@ -106,7 +106,7 @@ def IndexLatest(url,notify=True):
 			if(item.has_key("class")==False):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,6,"")
 
-##############################################
+################################################################################
 def Index_co(url):
 	link = GetContent(url)
 	if link == None:
@@ -138,7 +138,7 @@ def Index_co(url):
 					vurl=strdomain2+item["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,9,"")
 
-##############################################
+################################################################################
 def ListSource(url,series):
 	link = GetContent(url)
 	if link == None:
@@ -159,9 +159,9 @@ def ListSource(url,series):
 			vurl=item["data-video"]
 			if vurl[0:2] == '//':
 				vurl = "https:" + vurl
-			addLink(vname,vurl,8,info[7])
+			addLink(vname,vurl,8,info['img'])
 
-##############################################
+################################################################################
 def ListSource_co(url,series):
 	link = GetContent(url)
 	if link == None:
@@ -173,6 +173,7 @@ def ListSource_co(url,series):
 	setLastPlayed(url, series)
 	soup = BeautifulSoup(newlink)
 	srclist=soup.findAll('div', {"id" : "w-server"})
+	info = Drama_Overview(series)
 	if(len(srclist) >0):
 		for item in srclist[0].findAll('div',{"class":re.compile("serverslist*")}):
 			#print item
@@ -180,19 +181,19 @@ def ListSource_co(url,series):
 			vurl=item["data-server"]
 			if vurl[0:2] == '//':
 				vurl = "https:" + vurl
-			addLink(vname,vurl,8,"")
+			addLink(vname,vurl,8,img['img'])
 
-##############################################
+################################################################################
 def ListAZ(url,mode):
 	for character in AZ_DIRECTORIES:
 		chrUrl= url.replace('#',character)
 		addDir(character.capitalize(),chrUrl,mode,"")
 
-##############################################
+################################################################################
 def log(description, level=0):
 	print description
 
-##############################################
+################################################################################
 def fetchPage(params={}):
 	get = params.get
 	link = get("link")
@@ -273,7 +274,7 @@ def fetchPage(params={}):
 		ret_obj = fetchPage(params)
 		return ret_obj
 
-##############################################
+################################################################################
 def getVimeoUrl(videoid,currentdomain=""):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -287,7 +288,7 @@ def getVimeoUrl(videoid,currentdomain=""):
 		except:
 			  return getVimeoVideourl(videoid,currentdomain)
 
-##############################################
+################################################################################
 def scrapeVideoInfo(videoid,currentdomain):
 	result = fetchPage({"link": "http://player.vimeo.com/video/%s?title=0&byline=0&portrait=0" % videoid,"refering": currentdomain})
 	collection = {}
@@ -299,7 +300,7 @@ def scrapeVideoInfo(videoid,currentdomain):
 		collection = json.loads(html)
 	return collection
 
-##############################################
+################################################################################
 def getVideoInfo(videoid,currentdomain):
 	collection = scrapeVideoInfo(videoid)
 
@@ -331,7 +332,7 @@ def getVideoInfo(videoid,currentdomain):
 	log("Done")
 	return (video, 200)
 
-##############################################
+################################################################################
 def getVimeoVideourl(videoid,currentdomain):
 	(video, status) = getVideoInfo(videoid,currentdomain)
 
@@ -355,7 +356,7 @@ def getVimeoVideourl(videoid,currentdomain):
 		log("Got apierror: " + video['apierror'])
 		return ""
 
-##############################################
+################################################################################
 def SEARCH():
 	try:
 		keyb = xbmc.Keyboard('', 'Enter search text')
@@ -367,7 +368,7 @@ def SEARCH():
 		IndexLatest(url)
 	except: pass
 
-##############################################
+################################################################################
 def INDEX(url, index=-1):
 	link = GetContent(url)
 	if link == None:
@@ -429,7 +430,7 @@ def INDEX(url, index=-1):
 
 	return canceled
 
-##############################################
+################################################################################
 def is_number(s):
 	try:
 		float(s)
@@ -437,7 +438,7 @@ def is_number(s):
 	except ValueError:
 		return False
 
-##############################################
+################################################################################
 def SearchResults(url):
 	link = GetContent(url)
 	if link == None:
@@ -452,7 +453,7 @@ def SearchResults(url):
 		nexurl= match[0]
 		addDir('Next>',nexurl,6,'')
 
-##############################################
+################################################################################
 def Episodes(url,name):
 	d = xbmcgui.Dialog()
 	link = GetContent(url)
@@ -479,7 +480,7 @@ def Episodes(url,name):
 			vname=vname.strip()
 			vepi = vname.split(": Episode ")[-1]
 			vurl=strdomain+item.a["href"]
-			info = Drama_Overview(vname, vurl, row['img'], row)
+			info = Episode_Info(vname, row)
 			vimg = info['img']
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -491,9 +492,9 @@ def Episodes(url,name):
 				tname = vname+" "
 				vselected = (tname.find(last_played+" ") != -1)
 			info['released'] = item.findAll('span', {"class": "time"})[0].text.split("?")[0]
-			addDir(vname.encode('utf-8', 'ignore'),vurl,7,vimg,selected=vselected,info=info,alt=info['title'])
+			addDir(vname.encode('utf-8', 'ignore'),vurl,7,vimg,selected=vselected,info=info,alt=info['alt'])
 
-##############################################
+################################################################################
 def Episodes_co(url,name):
 	link = GetContent(url)
 	if link == None:
@@ -519,7 +520,7 @@ def Episodes_co(url,name):
 			vname=vname.strip()
 			vurl=item.h3.a["href"]
 			vepi = vname.split(": Episode ")[-1]
-			info = Drama_Overview(vname, vurl, row[7], row)
+			info = Episode_Info(vname, row)
 			vimg = info['img']
 			vsubbed=item.findAll('span', {"class": "type subbed"})
 			if (len(vsubbed) == 0):
@@ -532,7 +533,7 @@ def Episodes_co(url,name):
 				vselected = (tname.find(last_played+" ") != -1)
 			addDir(vname.encode('utf-8', 'ignore'),vurl,11,vimg,selected=vselected,alt=info['title'])
 
-##############################################
+################################################################################
 def ParseSeparate(vcontent,namesearch,urlsearch):
 	newlink = ''.join(vcontent.splitlines()).replace('\t','')
 	match2=re.compile(urlsearch).findall(newlink)
@@ -548,7 +549,7 @@ def ParseSeparate(vcontent,namesearch,urlsearch):
 			return True
 	return False
 
-##############################################
+################################################################################
 def GetContent2(url,referr, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
@@ -572,7 +573,7 @@ def GetContent2(url,referr, cj):
 	usock.close()
 	return (cj, response)
 
-##############################################
+################################################################################
 def GetContent(url,notify=True):
 	try:
 		net = Net()
@@ -583,7 +584,7 @@ def GetContent(url,notify=True):
 		if notify == True:
 			xbmcgui.Dialog().ok(url,"Can't Connect to site",'Try again in a moment')
 
-##############################################
+################################################################################
 def postContent(url,data,referr):
 	opener = urllib2.build_opener()
 	opener.addheaders = [
@@ -606,7 +607,7 @@ def postContent(url,data,referr):
 	usock.close()
 	return response
 
-##############################################
+################################################################################
 def playVideo(videoType,videoId):
 	url = ""
 	#print videoType + '=' + videoId
@@ -637,7 +638,7 @@ def playVideo(videoType,videoId):
 		xbmcPlayer = xbmc.Player()
 		xbmcPlayer.play(videoId)
 
-##############################################
+################################################################################
 def GetDirVideoUrl(url, cj):
 	if cj is None:
 		cj = cookielib.LWPCookieJar()
@@ -666,7 +667,7 @@ def GetDirVideoUrl(url, cj):
 	usock = opener.open(url)
 	return redirhndler.video_url
 
-##############################################
+################################################################################
 def loadVideos(url,name):
 	xbmc.executebuiltin("XBMC.Notification(Please Wait!,Loading selected video)")
 	newlink=url
@@ -762,13 +763,13 @@ def loadVideos(url,name):
 
 	playVideo(playtype,vidlink)
 
-##############################################
+################################################################################
 def OtherContent():
 	net = Net()
 	response = net.http_GET('http://khmerportal.com/videos')
 	print response
 
-##############################################
+################################################################################
 def extractFlashVars(data):
 	for line in data.split("\n"):
 		index = line.find("ytplayer.config =")
@@ -787,7 +788,7 @@ def extractFlashVars(data):
 		flashvars = data["args"]
 	return flashvars
 
-##############################################
+################################################################################
 def selectVideoQuality(links):
 	link = links.get
 	video_url = ""
@@ -876,7 +877,7 @@ def selectVideoQuality(links):
 
 	return video_url
 
-##############################################
+################################################################################
 def getYoutube(videoid):
 	code = videoid
 	linkImage = 'http://i.ytimg.com/vi/'+code+'/default.jpg'
@@ -916,14 +917,14 @@ def getYoutube(videoid):
 	highResoVid=selectVideoQuality(links)
 	return highResoVid
 
-##############################################
+################################################################################
 def parseDate(dateString):
 	try:
 		return datetime.datetime.fromtimestamp(time.mktime(time.strptime(dateString.encode('utf-8', 'replace'), "%Y-%m-%d %H:%M:%S")))
 	except:
 		return datetime.datetime.today() - datetime.timedelta(days = 1) #force update
 
-##############################################
+################################################################################
 def checkGA():
 	secsInHour = 60 * 60
 	threshold  = 2 * secsInHour
@@ -942,6 +943,7 @@ def checkGA():
 	APP_LAUNCH()
 
 
+################################################################################
 def send_request_to_google_analytics(utm_url):
 	ua='Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 	import urllib2
@@ -952,7 +954,7 @@ def send_request_to_google_analytics(utm_url):
 		print ("GA fail: %s" % utm_url)
 	return response
 
-##############################################
+################################################################################
 def GA(group,name):
 	try:
 		try:
@@ -1009,7 +1011,7 @@ def GA(group,name):
 	except:
 		print "================  CANNOT POST TO ANALYTICS  ================"
 
-##############################################
+################################################################################
 def APP_LAUNCH():
 	versionNumber = int(xbmc.getInfoLabel("System.BuildVersion" )[0:2])
 	if versionNumber > 13:
@@ -1082,7 +1084,7 @@ def APP_LAUNCH():
 
 checkGA()
 
-##############################################
+################################################################################
 def addLink(name,url,mode,iconimage,selected=False):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&series="+urllib.quote_plus(name)
 	ok=True
@@ -1094,7 +1096,7 @@ def addLink(name,url,mode,iconimage,selected=False):
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz)
 	return ok
 
-##############################################
+################################################################################
 def addNext(formvar,url,mode,iconimage):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&formvar="+str(formvar)+"&name="+urllib.quote_plus('Next >')
 	ok=True
@@ -1103,7 +1105,7 @@ def addNext(formvar,url,mode,iconimage):
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
 
-##############################################
+################################################################################
 def addDir(name,url,mode,iconimage,info=None,selected=False,alt=None):
 	u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&series="+urllib.quote_plus(name)
 	ok=True
@@ -1116,12 +1118,6 @@ def addDir(name,url,mode,iconimage,info=None,selected=False,alt=None):
 		"mediatype":"episode",
 	}
 	if info != None:
-		try:
-			if info['season'] > 0:
-				data['season'] = info['season']
-		except: pass
-		if info['episode'] > 0:
-			data['episode'] = info['episode']
 		if info['plot'] != '':
 			data['plot'] = info['plot']
 		if info['dcast'] != '':
@@ -1132,21 +1128,25 @@ def addDir(name,url,mode,iconimage,info=None,selected=False,alt=None):
 			data['status'] = info['status']
 		if info['released'] > 0:
 			data['aired'] = str(info['released']).split(" ")[0]
-		#row.append(vimg)	#  7 = Image URL
-		if info['imdb'] != '':
-			try:
-				data['imdbnumber'] = info['imdb'].split('/title/')[1][:-1]
-			except: pass
-		#row.append(0)		# 10 = Episodes count
-		if info['title'] != '':
-			data['title'] = info['title']
 		if info['genre'] != '':
 			data['genre'] = info['genre'].split(" ")
+		try:
+			data['imdbnumber'] = info['imdb'].split('/title/')[1][:-1]
+		except: pass
+		try:
+			data['season'] = info['season']
+		except: pass
+		try:
+			data['episode'] = info['episode']
+		except: pass
+		try:
+			data['title'] = info['title']
+		except: pass
 	liz.setInfo( type="Video", infoLabels=data )
 	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
 	return ok
 
-##############################################
+################################################################################
 def get_params():
 	param=[]
 	paramstring=sys.argv[2]
@@ -1164,7 +1164,7 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]
 	return param
 
-##############################################
+################################################################################
 def List_Genres(url):
 	link = GetContent(url)
 	if link == None:
@@ -1189,7 +1189,7 @@ def List_Genres(url):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,14,"")
 			except: pass
 
-##############################################
+################################################################################
 def List_Stars(url):
 	link = GetContent(url)
 	if link == None:
@@ -1222,7 +1222,7 @@ def List_Stars(url):
 				vurl=url.split('?')[0]+item.a["href"]
 				addDir(vname.encode('utf-8', 'ignore'),vurl,15,"")
 
-##############################################
+################################################################################
 def List_Stars_In(url):
 	#return
 	link = GetContent(url)
@@ -1254,7 +1254,7 @@ def List_Stars_In(url):
 			if(item.has_key("class")==False):
 				addDir(vname.encode('utf-8', 'ignore'),vurl,6,"")
 
-##############################################
+################################################################################
 def Search_for_Stars():
 	try:
 		keyb = xbmc.Keyboard('', 'Enter search text')
@@ -1266,7 +1266,7 @@ def Search_for_Stars():
 		List_Stars_In(url)
 	except: pass
 
-##############################################
+################################################################################
 def setLastPlayed(url, series):
 	series = ExtractAlphanumeric(series.strip())
 	if series == None or series == "":
@@ -1278,7 +1278,7 @@ def setLastPlayed(url, series):
 	db1.cursor().execute('INSERT OR REPLACE INTO recent (series, episode, last_url, last_visit) VALUES (?,?,?,?)', ( series, vepisode, url, int(time.time()) ))
 	db1.commit()
 
-##############################################
+################################################################################
 def getLastPlayed(series):
 	series = ExtractAlphanumeric(series.strip())
 	cur=db1.cursor()
@@ -1287,7 +1287,7 @@ def getLastPlayed(series):
 		return row['episode']
 	return None
 
-##############################################
+################################################################################
 def Recently_Viewed():
 	cur=db1.cursor()
 	cur.execute("SELECT series, last_url FROM recent ORDER BY last_visit DESC")
@@ -1298,11 +1298,11 @@ def Recently_Viewed():
 		vimg = info['img']
 		addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info=info)
 
-##############################################
+################################################################################
 def ExtractAlphanumeric(str):
     return re.sub('[^A-Za-z0-9\s\(\)\:]+', '', str)
 
-##############################################
+################################################################################
 def Populate_Stars(page=0):
 	max = 999999
 	while page <= max:
@@ -1353,7 +1353,7 @@ def Populate_Stars(page=0):
 	# Close the progress bar:
 	progress_bar.close()
 
-##############################################
+################################################################################
 def Expand_Cast(series, stars):
 	stars = stars.split(',')
 	cast = []
@@ -1380,14 +1380,8 @@ def Expand_Cast(series, stars):
 		cast.append(info)
 	return cast
 
-##############################################
+################################################################################
 def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
-	# Strip episode number out of the series name:
-	try:
-		episode = series.split(': Episode ')[1]
-	except:
-		episode = 0
-
 	# Strip the season number out of the series name:
 	try:
 		parts = series.split(" Season ")
@@ -1400,19 +1394,17 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	# Get the series information from the database:
 	series = ExtractAlphanumeric(series)
 	cur=db2.cursor()
-	cur.execute('SELECT series, episode, plot, dcast, country, status, released, img, imdb, reload, total, title, genre, mdl FROM dramas WHERE series=? AND episode=?', (series,episode))
+	cur.execute('SELECT * FROM dramas WHERE series=?', [search])
 	row = cur.fetchone()
 	if row != None:
 		# If no reload required, return the row:
 		if row['reload'] == 0:
 			return row
-		row[0] = 0
 	else:
 		# Set up the database row using provided row, or default settings:
 		if default == None:
 			row = {
 				'series':   series,
-				'episode':  0,
 				'plot':     '',
 				'dcast':    '',
 				'country':  '',
@@ -1421,22 +1413,17 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 				'img':      vimg,
 				'imdb':     '',
 				'reload':   0,
-				'total':    0,
-				'title':    series,
+				'total':    1,
+				'alt':      series,
 				'genre':    '',
-				'mdl':      ''
+				'title':    '',
 			}
 		else:
 			row = default.copy()
 			row['series'] = series
-			row['episode'] = episode
 			row['title'] = series
 
-	# If we are asking about a particular episode, return at this point:
-	if episode > 0:
-		if default != None:
-			row['dcast'] = default['dcast']
-		return row
+	# Is a reload necessary --OR-- has the data collection been cancelled?  If so, return the data we have:
 	if cancelled:
 		return row
 
@@ -1447,7 +1434,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	p[1] = strdomain2.replace('https://','')
 	p[2] = p[2].split("-episode-")[0]
 	url = urlparse.urlunsplit(p)
-	#xbmcgui.Dialog().ok('Drama_Overview','Country',url)
+	#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',url)
 
 	# Get the drama information from the website:
 	link = GetContent(url, False)
@@ -1464,11 +1451,11 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	soup = BeautifulSoup(newlink)
 
 	# If the drama image wasn't passed, see if we can determine the image URL:
-	if row['img'] == "":
+	if row['img'] == '':
 		menucontent=soup.find('div', {'id' : 'drama-details'})
 		if len(menucontent) > 0:
 			row['img'] = menucontent.img["src"]
-			#xbmcgui.Dialog().ok('Drama_Overview','Drama Image URL',row['img'])
+			#xbmcgui.Dialog().ok('Get_Drama_Overview','Drama Image URL',row['img'])
 
 	# Drama synopsis:
 	menucontent=soup.findAll('div', {'class' : 'drama-details wrapper'})
@@ -1477,32 +1464,32 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 		try:
 			row['plot'] = menucontent[0].findAll('div', {'class': 'synopsis'})[0].findAll('p')[0].text
 		except: pass
-		#xbmcgui.Dialog().ok('Drama_Overview','Plot',row['plot'])
+		#xbmcgui.Dialog().ok('Get_Drama_Overview','Plot',row['plot'])
 
 		# Drama Country:
 		try:
 			row['country'] = menucontent[0].findAll('p', {'class': 'country'})[0].text.split(":")[1]
 		except: pass
-		#xbmcgui.Dialog().ok('Drama_Overview','Country',row['country'])
+		#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',row['country'])
 
 		# Drama Status:
 		try:
 			row['status'] = menucontent[0].findAll('p', {'class': 'status'})[0].text.split(":")[1]
 		except: pass
-		#xbmcgui.Dialog().ok('Drama_Overview','Status',row['status'])
+		#xbmcgui.Dialog().ok('Get_Drama_Overview','Status',row['status'])
 
 		# Drama Genre:
 		try:
 			row['genre'] = menucontent[0].findAll('p', {'class': 'genres'})[0].text.split(":")[1]
 		except: pass
-		#xbmcgui.Dialog().ok('Drama_Overview','Genres',row['genre'])
+		#xbmcgui.Dialog().ok('Get_Drama_Overview','Genres',row['genre'])
 
 		# Drama Cast:
 		try:
 			row['dcast'] = menucontent[0].findAll('p', {'class': 'starring'})[0].text
 			row['dcast'] = row['dcast'].split(':')[1]
 		except: pass
-		#xbmcgui.Dialog().ok('Drama_Overview','Starring',row['dcast'])
+		#xbmcgui.Dialog().ok('Get_Drama_Overview','Starring',row['dcast'])
 
 	################################################################################
 	# Now pull from the other DramaCool website:
@@ -1511,7 +1498,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	p[1] = strdomain.replace('https://','')
 	p[2] = '/drama-detail' + p[2]
 	url = urlparse.urlunsplit(p)
-	#xbmcgui.Dialog().ok('Drama_Overview','Country',url)
+	#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',url)
 
 	# Get the drama information from the website:
 	link = GetContent(url, False)
@@ -1536,7 +1523,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			test = item.text.split(" ")[0]
 			if row['released'] == "" or row['released'] > test:
 				row['released'] = test
-			#xbmcgui.Dialog().ok('Drama_Overview','First Released',row[6])
+			#xbmcgui.Dialog().ok('Get_Drama_Overview','First Released',row['released'])
 
 	################################################################################
 	# Get the IMDB link from the website (if possible):
@@ -1559,32 +1546,30 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			menucontent=soup.findAll('table', {'class' : 'findList'})
 			if len(menucontent) > 0:
 				row['imdb'] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
-				#xbmcgui.Dialog().ok('Drama_Overview','IMDB link: Try # 1',row[8])
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','IMDB link',row['imdb'])
 
 	################################################################################
 	# Insert the drama information into the database:
 	################################################################################
 	dictInsert(db2, 'dramas', row)
 	db2.commit()
-	return row
 
+	################################################################################
 	# If only one episode and statis is completed, skip the rest!  Otherwise, gather episode information:
-	if row[10] == 1 and row[5] == 'Completed':
+	################################################################################
+	if row['total'] == 1 and row['status'] == 'Completed':
 		return row
-	default = list(row)
-	row[3] = ''
-	row[2] = ''
+	default = row.copy()
 
+	################################################################################
 	# Get the episode information from IMDB.com:
+	################################################################################
 	try:
 		link = GetContent(row['imdb']+'episodes?season='+str(season)+'&ref_=tt_eps_sn_'+str(season), False)
 	except:
-		link = None
+ 		link = None
 	if link == None:
 		return default
-	row[9] = 0
-	row2 = list(row)
-
 	try:
 		link =link.encode('UTF-8')
 	except: pass
@@ -1595,52 +1580,86 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	newline = newline.replace('\t','')
 	soup = BeautifulSoup(newlink)
 
-	# Start by getting the links to the episode screenshots:
-	default = list(row2)
+	################################################################################
+	# Gather as much information as possible about the episodes:
+	################################################################################
 	menucontent=soup.findAll('div', {'class':re.compile('list_item *')})
 	if len(menucontent) > 0:
 		for item in menucontent:
-			# Make copy of the original row, in case stuff can't be found:
-			row = list(row2)
+			row = {
+				'series':  search,
+				'alt':     search,
+				'episode': 0,
+				'season':  season,
+				'img':     '',
+				'plot':    '',
+				'title':   search
+			}
 
-			# Episode number:
-			vimg = item.findAll('div', {'class': 'image'})[0]
-			row[1] = vimg.text.split(',')[-1].replace('Ep','').strip()
-			row[0] = row[0] + ': Episode ' + str(row[1])
-			#xbmcgui.Dialog().ok('Drama_Overview','Episode Number', row[1])
+			info = item.findAll('div', {'class': 'info'})
+			if len(info) > 0:
+				# Episode number:
+				row['episode'] = info[0].meta["content"]
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode Number', row['episode'])
 
-			# Episode description:
-			try:
-				row[2] = desc[0].findAll('div', {'class': 'item_description'})[0].text
-			except:
-				row[2] = ''
-			if row[2].find("Know what this is about?") > -1:
-				row[2] = ''
-			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Plot', row[2])
+				# Episode title from DramaCool:
+				row['series'] = search + ': Episode ' + str(row['episode'])
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Title', row['series'])
 
-			# Episode release date:
-			row[11] = vimg.a['title']
-			if row[11].find("Episode #") == -1:
-				row[11] = "Episode " + str(row[1]) + ": " + row[11]
-			else:
-				row[11] = row[0]
-			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Title', row[10])
+				# Episode description:
+				row['alt'] = info[0].findAll('a', {'itemprop': 'name'})[0].text
+				if row['alt'][:9] == 'Episode #':
+					row['alt'] = row['series']
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Alt', row['alt'])
 
-			# Image URL:
-			try:
-				row[7] = vimg.img['src']
-			except:
-				row[7] = row2[7]
-			#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row[1]) + ' Image URL', row[7])
+				# Episode description:
+				row['plot'] = info[0].findAll('div', {'class': 'item_description'})[0].text
+				if row['plot'].find("Know what this is about?") > -1:
+					row['plot'] = ''
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Plot', row['plot'])
 
-			# Save it to the database:
-			dictInsert(db2, 'dramas', row)
+				# Image URL:
+				try:
+					row['img'] = item.findAll('div', {'class': 'image'})[0].img['src']
+				except: pass
+				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Image URL', row['img'])
+
+				# We have the information!  Save it to the database:
+				dictInsert(db2, 'episodes', row)
 
 	# Commit all changes to the database:
 	db2.commit()
 	return default
 
-##############################################
+################################################################################
+def Episode_Info(series, default):
+	# Get the episode information from the database:
+	series = ExtractAlphanumeric(series)
+	cur=db2.cursor()
+	cur.execute('SELECT * FROM episodes WHERE series=?', [series])
+	row = cur.fetchone()
+
+	# Copy episode information to row.  If none exists, we need to fake it:
+	if row == None:
+		row2 = default.copy()
+		row2['series'] = series
+		row2['alt'] = series
+		parts = series.split(': Episode ')
+		row2['title'] = parts[0]
+		row2['episode'] = parts[1]
+		try:
+			row2['season'] = series.split(" Season ")[1]
+		except:
+			row2['season'] = 1
+		row2['plot'] = ''
+		row2['img'] = ''
+	else:
+		row2 = default.copy()
+		for part in row:
+			row2[part] = row[part]
+	return row2
+
+################################################################################
 def Refresh_Database(url):
 	c = 0
 	for character in AZ_DIRECTORIES:
@@ -1648,13 +1667,13 @@ def Refresh_Database(url):
 			return
 		c += 1
 
-##############################################
+################################################################################
 def Remove_Series(series):
 	db1.cursor().execute("DELETE FROM recent WHERE series = ?", [series])
 	db1.commit()
 	xbmcgui.Dialog().ok('DramaCool','Series "'+series+'" has been removed from the recently viewed page.  Go back to the main page of the DramaCool app and select "Recently Viewed" to see the updated page.')
 
-##############################################
+################################################################################
 def dictInsert(db, table, dict):
 	row = []
 	qmk = ''
@@ -1680,19 +1699,10 @@ def reporthook(block_number, block_size, total_size):
 	     progress_bar.update(percent)
 
 def Download_DB(db, src, dest, dbname):
-	# Close access to the existing database:
-	try:
-		db.close()
-	except: pass
-
 	# Download the database from DropBox:
 	progress_bar.create('DramaCool', 'Downloading prebuilt ' + dbname + ' Database from Dropbox!', 'Please Wait!')
 	urllib.urlretrieve(src, dest, reporthook)
 	progress_bar.close()
-
-	# Reconnect with the dramas database:
-	db = dbapi2.connect(dest)
-	db.row_factory = dict_factory
 
 # Make sure that the plugin userdata folder exists:
 path=os.path.join(xbmc.translatePath('special://home'), 'userdata', 'addon_data', 'plugin.video.DramaCool')
@@ -1709,7 +1719,8 @@ db_path = os.path.join(path, 'dramas.database')
 #if not os.path.isfile(db_path):
 #	Download_DB(db2, "http://www.dropbox.com/s/db1f70vloyy69nf/dramas.database?dl=1", db_path, 'Drama')
 db2 = dbapi2.connect(db_path)
-db2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released TEXT, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT, mdl TEXT)")
+db2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released TEXT, img TEXT, imdb TEXT, reload INTEGER, total INTEGER, title TEXT, genre TEXT, alt TEXT)")
+db2.cursor().execute("CREATE TABLE IF NOT EXISTS episodes (series TEXT UNIQUE, alt TEXT, episode INTEGER, season INTEGER, img TEXT, plot TEXT, title TEXT)")
 db2.row_factory = dict_factory
 
 # If stars database doesn't exist, try to download it.  If failed, create the database:
@@ -1728,7 +1739,7 @@ db4 = dbapi2.connect(db_path)
 db4.cursor().execute("CREATE TABLE IF NOT EXISTS roles (series TEXT, name TEXT, role TEXT, UNIQUE(series, name) ON CONFLICT REPLACE)")
 db4.row_factory = dict_factory
 
-##############################################
+################################################################################
 # Get parameters passed to script:
 params=get_params()
 try:
