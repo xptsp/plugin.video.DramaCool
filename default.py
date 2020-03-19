@@ -386,7 +386,7 @@ def INDEX(url, index=-1):
 	items = listcontent[0].findAll('li')
 	pDialog = xbmcgui.DialogProgress()
 	title = 'DramaCool'
-	if index :
+	if index > -1:
 		title = title + ': Processing ' + AZ_DIRECTORIES[index] + "'s..."
 	pDialog.create(title, 'Processing Drama list...', '')
 	max = len(items)
@@ -402,10 +402,10 @@ def INDEX(url, index=-1):
 		cnt += 1
 		vurl=strdomain+item.a["href"]
 		vimg=item.a.img["data-original"]
-		canceled = pDialog.iscanceled()
-		info = Drama_Overview(vname, vurl, vimg, cancelled=canceled)
+		info = Drama_Overview(vname, vurl, vimg, dialog=pDialog)
 		if index == -1:
 			addDir(vname.encode('utf-8', 'ignore'),vurl,5,vimg,info)
+	canceled = pDialog.iscanceled()
 	pDialog.close()
 
 	#pagecontent=soup.findAll('div', {"class" : re.compile("page-nav*")})
@@ -1381,7 +1381,7 @@ def Expand_Cast(series, stars):
 	return cast
 
 ################################################################################
-def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
+def Drama_Overview(series, url='', vimg='', default=None, dialog = None):
 	# Strip the season number out of the series name:
 	try:
 		parts = series.split(" Season ")
@@ -1423,112 +1423,88 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			row['series'] = series
 			row['title'] = series
 
-	# Is a reload necessary --OR-- has the data collection been cancelled?  If so, return the data we have:
-	if cancelled:
-		return row
+	# Has the data collection been cancelled?  If so, return the data we have:
+	if dialog != None:
+		if dialog.iscanceled():
+			return row
 
 	################################################################################
 	# Make sure we are using a URL for the drama details, not an episode:
 	################################################################################
-	p = list(urlparse.urlsplit(url))
-	p[1] = strdomain2.replace('https://','')
-	p[2] = p[2].split("-episode-")[0]
-	url = urlparse.urlunsplit(p)
-	#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',url)
-
 	# Get the drama information from the website:
 	link = GetContent(url, False)
-	if link == None:
-		return row
-	try:
-		link =link.encode('UTF-8')
-	except: pass
-	newline = link
-	try:
-		newlink = ''.join(link.splitlines())
-	except: pass
-	newline = newline.replace('\t','')
-	soup = BeautifulSoup(newlink)
+	if link != None:
+		try:
+			link =link.encode('UTF-8')
+		except: pass
+		newline = link
+		try:
+			newlink = ''.join(link.splitlines())
+		except: pass
+		newline = newline.replace('\t','')
+		soup = BeautifulSoup(newlink)
+		menucontent=soup.find('div', {'class' : 'info'})
+		if menucontent != None:
+			items = menucontent.findChildren('p', recursive=False)
+			i = 0
+			while i < len(items):
+				# Item description:
+				test = items[i].text.strip()
+				#xbmcgui.Dialog().ok('Drama_Overview','Line # ' + str(i),test)
 
-	# If the drama image wasn't passed, see if we can determine the image URL:
-	if row['img'] == '':
-		menucontent=soup.find('div', {'id' : 'drama-details'})
+				# Drama Country
+				if test.find('Country:') == 0:
+					row['country'] = test.split(':')[-1]
+					#xbmcgui.Dialog().ok('Drama_Overview','Country',row['country'])
+
+				# Drama Status
+				elif test.find('Status:') == 0:
+					row['status'] = test.split(':')[-1]
+					#xbmcgui.Dialog().ok('Drama_Overview','Status',row['status'])
+
+				# Drama Status
+				elif test.find('Genre:') == 0:
+					row['genre'] = test.split(':')[-1]
+					if row['genre'][-1:] == ';':
+						row['genre'] = row['genre'][:-1]
+					#xbmcgui.Dialog().ok('Drama_Overview','Genre',row['genre'])
+
+				# Discard miscellaneous sections:
+				elif test.find('Other name:') == 0 or test.find('Description:') == 0 or test.find('Released:') == 0:
+					i = i
+
+				# If we got here, hopefully this is part of the description:
+				else:
+					if test != '':
+						row['plot'] = row['plot'] + test + "\n\n"
+					#xbmcgui.Dialog().ok('Drama_Overview','Plot',row['plot'])
+
+				i += 1
+
+		# Get first release date:
+		row['total'] = 0
+		menucontent=soup.findAll('div', {'class' : 'block tab-container'})
 		if len(menucontent) > 0:
-			row['img'] = menucontent.img["src"]
-			#xbmcgui.Dialog().ok('Get_Drama_Overview','Drama Image URL',row['img'])
+			for item in menucontent[0].findAll('span', {'class' : 'time'}):
+				row['total'] += 1
+				test = item.text.split(" ")[0]
+				if row['released'] == "" or row['released'] > test:
+					row['released'] = test
+				#xbmcgui.Dialog().ok('Drama_Overview','First Released',row['released'])
 
-	# Drama synopsis:
-	menucontent=soup.findAll('div', {'class' : 'drama-details wrapper'})
-	if len(menucontent) > 0:
-		# Drama Synopsis:
-		try:
-			row['plot'] = menucontent[0].findAll('div', {'class': 'synopsis'})[0].findAll('p')[0].text
-		except: pass
-		#xbmcgui.Dialog().ok('Get_Drama_Overview','Plot',row['plot'])
-
-		# Drama Country:
-		try:
-			row['country'] = menucontent[0].findAll('p', {'class': 'country'})[0].text.split(":")[1]
-		except: pass
-		#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',row['country'])
-
-		# Drama Status:
-		try:
-			row['status'] = menucontent[0].findAll('p', {'class': 'status'})[0].text.split(":")[1]
-		except: pass
-		#xbmcgui.Dialog().ok('Get_Drama_Overview','Status',row['status'])
-
-		# Drama Genre:
-		try:
-			row['genre'] = menucontent[0].findAll('p', {'class': 'genres'})[0].text.split(":")[1]
-		except: pass
-		#xbmcgui.Dialog().ok('Get_Drama_Overview','Genres',row['genre'])
-
-		# Drama Cast:
-		try:
-			row['dcast'] = menucontent[0].findAll('p', {'class': 'starring'})[0].text
-			row['dcast'] = row['dcast'].split(':')[1]
-		except: pass
-		#xbmcgui.Dialog().ok('Get_Drama_Overview','Starring',row['dcast'])
+		# Gather the cast together into an array:
+		cast = ''
+		menucontent=soup.findAll('div', {'class' : 'slider-star'})
+		if len(menucontent) > 0:
+			for item in menucontent[0].findAll('div', {'class' : 'item'}):
+				cast = cast + item.text.split("(")[0].strip() + ','
+		row['dcast'] = cast[:-1]
+		#xbmcgui.Dialog().ok('Drama_Overview','Cast array',row['dcast'])
 
 	################################################################################
-	# Now pull from the other DramaCool website:
+	# Get the IMDB link from the website if no IMDB URL is in the database --OR-- there is more than one episode and is NOT completed:
 	################################################################################
-	p = list(urlparse.urlsplit(url))
-	p[1] = strdomain.replace('https://','')
-	p[2] = '/drama-detail' + p[2]
-	url = urlparse.urlunsplit(p)
-	#xbmcgui.Dialog().ok('Get_Drama_Overview','Country',url)
-
-	# Get the drama information from the website:
-	link = GetContent(url, False)
-	if link == None:
-		return row
-	try:
-		link =link.encode('UTF-8')
-	except: pass
-	newline = link
-	try:
-		newlink = ''.join(link.splitlines())
-	except: pass
-	newline = newline.replace('\t','')
-	soup = BeautifulSoup(newlink)
-
-	# Get first release date:
-	row['total'] = 0
-	menucontent=soup.findAll('div', {'class' : 'block tab-container'})
-	if len(menucontent) > 0:
-		for item in menucontent[0].findAll('span', {'class' : 'time'}):
-			row['total'] += 1
-			test = item.text.split(" ")[0]
-			if row['released'] == "" or row['released'] > test:
-				row['released'] = test
-			#xbmcgui.Dialog().ok('Get_Drama_Overview','First Released',row['released'])
-
-	################################################################################
-	# Get the IMDB link from the website (if possible):
-	################################################################################
-	if row['imdb'] == '':
+	if row['imdb'] == '' and not (row['total'] == 1 and row['status'] == 'Completed'):
 		try:
 			link = GetContent('https://www.imdb.com/find?q='+urllib.quote_plus(search)+'&exact=true&ref_=nv_sr_sm', False)
 		except:
@@ -1546,7 +1522,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			menucontent=soup.findAll('table', {'class' : 'findList'})
 			if len(menucontent) > 0:
 				row['imdb'] = 'https://www.imdb.com'+menucontent[0].findAll('td', {'class': 'result_text'})[0].a['href'].split('?')[0]
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','IMDB link',row['imdb'])
+				#xbmcgui.Dialog().ok('Drama_Overview','IMDB link',row['imdb'])
 
 	################################################################################
 	# Insert the drama information into the database:
@@ -1559,6 +1535,7 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 	################################################################################
 	if row['total'] == 1 and row['status'] == 'Completed':
 		return row
+	#xbmcgui.Dialog().ok('Drama_Overview','Got Here')
 	default = row.copy()
 
 	################################################################################
@@ -1600,29 +1577,29 @@ def Drama_Overview(series, url='', vimg='', default=None, cancelled=False):
 			if len(info) > 0:
 				# Episode number:
 				row['episode'] = info[0].meta["content"]
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode Number', row['episode'])
+				#xbmcgui.Dialog().ok('Drama_Overview','Episode Number', row['episode'])
 
 				# Episode title from DramaCool:
 				row['series'] = search + ': Episode ' + str(row['episode'])
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Title', row['series'])
+				#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row['episode']) + ' Title', row['series'])
 
 				# Episode description:
 				row['alt'] = info[0].findAll('a', {'itemprop': 'name'})[0].text
 				if row['alt'][:9] == 'Episode #':
 					row['alt'] = row['series']
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Alt', row['alt'])
+				#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row['episode']) + ' Alt', row['alt'])
 
 				# Episode description:
 				row['plot'] = info[0].findAll('div', {'class': 'item_description'})[0].text
 				if row['plot'].find("Know what this is about?") > -1:
 					row['plot'] = ''
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Plot', row['plot'])
+				#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row['episode']) + ' Plot', row['plot'])
 
 				# Image URL:
 				try:
 					row['img'] = item.findAll('div', {'class': 'image'})[0].img['src']
 				except: pass
-				#xbmcgui.Dialog().ok('Get_Drama_Overview','Episode ' + str(row['episode']) + ' Image URL', row['img'])
+				#xbmcgui.Dialog().ok('Drama_Overview','Episode ' + str(row['episode']) + ' Image URL', row['img'])
 
 				# We have the information!  Save it to the database:
 				dictInsert(db2, 'episodes', row)
