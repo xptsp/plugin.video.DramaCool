@@ -1370,7 +1370,7 @@ def Expand_Cast(series, stars):
 		except: pass
 
 		# Pull the star's role from the role database:
-		cur=db4.cursor()
+		cur=db2.cursor()
 		cur.execute('SELECT role FROM roles WHERE name = ? AND series = ? LIMIT 1', (star, series))
 		role = cur.fetchone()
 		try:
@@ -1741,7 +1741,7 @@ def reporthook(block_number, block_size, total_size):
 	     percent = (block_number * block_size * 100) / total_size
 	     progress_bar.update(percent)
 
-def Download_DB(db, src, dest, dbname):
+def Download_DB(src, dest, dbname):
 	# Download the database from DropBox:
 	progress_bar.create('DramaCool', 'Downloading prebuilt ' + dbname + ' Database from Dropbox!', 'Please Wait!')
 	urllib.urlretrieve(src, dest, reporthook)
@@ -1760,27 +1760,38 @@ db1.row_factory = dict_factory
 # If dramas database doesn't exist, try to download it.  If failed, create the database:
 db_path = os.path.join(path, 'dramas.database')
 if not os.path.isfile(db_path):
-	Download_DB(db2, "https://www.dropbox.com/s/agoj81jj2l9a7oi/dramas.database?dl=1", db_path, 'Drama')
+	Download_DB("https://www.dropbox.com/s/agoj81jj2l9a7oi/dramas.database?dl=1", db_path, 'Drama')
 db2 = dbapi2.connect(db_path)
+db2.cursor().execute("CREATE TABLE IF NOT EXISTS db_info (key TEXT UNIQUE, value TEXT)")
 db2.cursor().execute("CREATE TABLE IF NOT EXISTS dramas (series TEXT UNIQUE, episode INTEGER, plot TEXT, dcast TEXT, country TEXT, status TEXT, released TEXT, img TEXT, imdb TEXT, total INTEGER, title TEXT, genre TEXT, alt TEXT)")
 db2.cursor().execute("CREATE TABLE IF NOT EXISTS episodes (series TEXT UNIQUE, alt TEXT, episode INTEGER, season INTEGER, img TEXT, plot TEXT, title TEXT)")
+db2.cursor().execute("CREATE TABLE IF NOT EXISTS roles (series TEXT, name TEXT, role TEXT, UNIQUE(series, name) ON CONFLICT REPLACE)")
 db2.row_factory = dict_factory
+
+# Check what version of the database we are running and download the database if outdated:
+db_version = '1.0'
+cur_version = '0.0'
+cur=db2.cursor()
+cur.execute('SELECT * FROM db_info WHERE key=?', ['version'])
+#cur.execute('DELETE FROM db_info WHERE key=?', ['version'])
+row = cur.fetchone()
+if row == None:
+	cur.execute('INSERT OR REPLACE INTO db_info (key, value) VALUES (?,?)', ('version', db_version))
+	cur_version = db_version
+else:
+	if row['version'] != db_version:
+		db2.close()
+		Download_DB("https://www.dropbox.com/s/agoj81jj2l9a7oi/dramas.database?dl=1", db_path, 'Drama')
+		db2 = dbapi2.connect(db_path)
+		db2.row_factory = dict_factory
 
 # If stars database doesn't exist, try to download it.  If failed, create the database:
 db_path = os.path.join(path, 'stars.database')
 if not os.path.isfile(db_path):
-	Download_DB(db3, "https://www.dropbox.com/s/6674c494ts85ben/stars.database?dl=1", db_path, 'Stars')
+	Download_DB("https://www.dropbox.com/s/6674c494ts85ben/stars.database?dl=1", db_path, 'Stars')
 db3 = dbapi2.connect(db_path)
 db3.cursor().execute("CREATE TABLE IF NOT EXISTS stars (name TEXT UNIQUE, image TEXT)")
 db3.row_factory = dict_factory
-
-# If roles database doesn't exist, try to download it.  If failed, create the database:
-db_path = os.path.join(path, 'roles.database')
-#if not os.path.isfile(db_path):
-#	Download_DB(db4, "http://www.dropbox.com/s/db1f70vloyy69nf/dramas.database?dl=1", db_path, 'Roles')
-db4 = dbapi2.connect(db_path)
-db4.cursor().execute("CREATE TABLE IF NOT EXISTS roles (series TEXT, name TEXT, role TEXT, UNIQUE(series, name) ON CONFLICT REPLACE)")
-db4.row_factory = dict_factory
 
 ################################################################################
 # Get parameters passed to script:
@@ -1863,4 +1874,3 @@ xbmcplugin.endOfDirectory(int(sysarg))
 db1.close()
 db2.close()
 db3.close()
-db4.close()
