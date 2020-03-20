@@ -1,3 +1,6 @@
+v2.1.2
+- Added database version checking code to the addon.  Downloads database if outdated.
+
 v2.1.1
 - Complete rewrite of information-gathering code
 - Modified code so that all database calls return dictionaries instead of tuples.
