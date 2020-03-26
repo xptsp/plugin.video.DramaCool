@@ -1775,15 +1775,15 @@ cur=db2.cursor()
 cur.execute('SELECT * FROM db_info WHERE key=?', ['version'])
 #cur.execute('DELETE FROM db_info WHERE key=?', ['version'])
 row = cur.fetchone()
-if row == None:
-	cur.execute('INSERT OR REPLACE INTO db_info (key, value) VALUES (?,?)', ('version', db_version))
-	cur_version = db_version
-else:
+try:
 	if row['version'] != db_version:
 		db2.close()
 		Download_DB("https://www.dropbox.com/s/agoj81jj2l9a7oi/dramas.database?dl=1", db_path, 'Drama')
 		db2 = dbapi2.connect(db_path)
 		db2.row_factory = dict_factory
+except:
+	cur.execute('INSERT OR REPLACE INTO db_info (key, value) VALUES (?,?)', ('version', db_version))
+	cur_version = db_version
 
 # If stars database doesn't exist, try to download it.  If failed, create the database:
 db_path = os.path.join(path, 'stars.database')
