@@ -1423,9 +1423,25 @@ def Drama_Overview(series, url='', vimg='', default=None, dialog = None):
 	################################################################################
 	# Parse the webpage to get the drama information:
 	################################################################################
-	while True:
-		link = GetContent(url, False)
-		if link != None:
+	link = GetContent(url, False)
+	if link != None:
+		try:
+			link =link.encode('UTF-8')
+		except: pass
+		newline = link
+		try:
+			newlink = ''.join(link.splitlines())
+		except: pass
+		newline = newline.replace('\t','')
+		soup = BeautifulSoup(newlink)
+		menucontent=soup.find('div', {'class' : 'info'})
+
+		# If this is the episode page, try to locate the webpage about the drama:
+		if menucontent == None:
+			try:
+				url = strdomain+soup.find('div', {'class': 'category'}).a['href']
+			except: pass				
+			link = GetContent(url, False)
 			try:
 				link =link.encode('UTF-8')
 			except: pass
@@ -1436,18 +1452,6 @@ def Drama_Overview(series, url='', vimg='', default=None, dialog = None):
 			newline = newline.replace('\t','')
 			soup = BeautifulSoup(newlink)
 			menucontent=soup.find('div', {'class' : 'info'})
-
-			# If this is the episode page, try to locate the webpage about the drama:
-			if menucontent != None:
-				break
-			elif url.find('/drama-detail/') == -1:
-				try:
-					url = strdomain+soup.find('div', {'class': 'category'}).a['href']
-					#xbmcgui.Dialog().ok('Drama_Overview','New URL',url)
-				except:
-					break
-			else:
-				break
 
 	if link != None:
 		if menucontent != None:
