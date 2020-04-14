@@ -486,13 +486,13 @@ def Episodes(url,name):
 			if (len(vsubbed) == 0):
 				vsubbed=item.findAll('span', {"class": "type SUB"})
 			if (len(vsubbed) == 0):
-				vname = '[RAW] '+vname
+				info['alt'] = '[RAW] '+ info['alt']
 			vselected = False
 			if last_played != None:
 				tname = vname+" "
 				vselected = (tname.find(last_played+" ") != -1)
 			info['released'] = item.findAll('span', {"class": "time"})[0].text.split("?")[0]
-			addDir(vname.encode('utf-8', 'ignore'),vurl,7,vimg,selected=vselected,info=info,alt=info['alt'])
+			addDir(vname.encode('utf-8', 'ignore'),vurl,7,vimg,selected=vselected,info=info,alt=info['alt'].encode('utf-8', 'ignore'))
 
 ################################################################################
 def Episodes_co(url,name):
